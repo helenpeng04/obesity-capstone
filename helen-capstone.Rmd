@@ -1,0 +1,12 @@
+---
+title: "Do physical inactivity level and access to healthy food affect obesity rate at the county level?"
+author: "Helen Peng"
+date: "2025-06-20"
+output: html_document
+---
+
+```{r}
+library(readxl)
+data_2024 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2024_county_health_release_data_-_v1.xlsx")
+```
+

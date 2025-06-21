@@ -1,0 +1,48 @@
+---
+title: "Do physical inactivity level and access to healthy food affect obesity rate at the county level?"
+author: "Helen Peng"
+date: "2025-06-20"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(tidyverse)
+
+data_2024 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2024_county_health_release_data_-_v1.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
+
+```
+
+```{r cleaning}
+
+# remove FIPS code since we already have county names
+
+table(data_2024$Unreliable...4)
+```
+
+
+
+```{r}
+library(usmap)
+
+state_obesity <- data_2024 |> 
+  select(State, `% Adults with Obesity`) |> 
+  filter(!is.na(State), !is.na(`% Adults with Obesity`)) |> 
+  group_by(State) |> 
+  summarize(obesity_rate = mean(`% Adults with Obesity`, na.rm = TRUE))|> 
+  rename(state = State) |>  # Rename to lowercase for plot_usmap() 
+  arrange(obesity_rate)
+
+plot_usmap(data = state_obesity, values = "obesity_rate", regions = "states") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Obesity Rate (%)", label = scales::comma
+  ) +
+  labs(title = "Average Adult Obesity Rate by State (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+
+```
+
+

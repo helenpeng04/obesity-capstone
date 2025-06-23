@@ -1,9 +1,10 @@
 ---
 title: "Do physical inactivity level and access to healthy food affect obesity rate at the county level?"
 author: "Helen Peng"
-date: "2025-06-20"
 output: html_document
 ---
+
+# Maps Obesity Rates
 
 ```{r}
 library(readxl)
@@ -13,26 +14,25 @@ data_2024 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capsto
 
 data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
 
+data_2024 <- data_2024 |>
+  select(FIPS, State, County, 4, 42:49, 80:95) |>
+  janitor::clean_names() 
+
+data_2025 <- data_2025 |> 
+  select(FIPS, State, County,4, 42:49,80:95) |> 
+  janitor::clean_names()
+
 ```
-
-```{r cleaning}
-
-# remove FIPS code since we already have county names
-
-table(data_2024$Unreliable...4)
-```
-
-
 
 ```{r}
 library(usmap)
 
+# filtering out statewide baseline rows (where county is NA)
 state_obesity <- data_2024 |> 
-  select(State, `% Adults with Obesity`) |> 
-  filter(!is.na(State), !is.na(`% Adults with Obesity`)) |> 
-  group_by(State) |> 
-  summarize(obesity_rate = mean(`% Adults with Obesity`, na.rm = TRUE))|> 
-  rename(state = State) |>  # Rename to lowercase for plot_usmap() 
+  select(state, county, percent_adults_with_obesity) |> 
+  filter(!is.na(state), !is.na(county), !is.na(percent_adults_with_obesity)) |> 
+  group_by(state) |> 
+  summarize(obesity_rate = mean(percent_adults_with_obesity, na.rm = TRUE)) |> 
   arrange(obesity_rate)
 
 plot_usmap(data = state_obesity, values = "obesity_rate", regions = "states") +
@@ -42,7 +42,119 @@ plot_usmap(data = state_obesity, values = "obesity_rate", regions = "states") +
   labs(title = "Average Adult Obesity Rate by State (2024)",
        subtitle = "Based on County Health Rankings Data") +
   theme(legend.position = "right")
+```
+
+```{r}
+ms_county <- data_2024 |> 
+  filter(state == "Mississippi", !is.na(county)) |> 
+  arrange(percent_adults_with_obesity)
+
+ms_obesity_plot <- plot_usmap(data = ms_county, values = "percent_adults_with_obesity", regions = "counties", include = "MS") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Obesity Rate (%)"
+  ) +
+  labs(title = "Average Adult Obesity Rate by County in Mississippi (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
 
 ```
 
+```{r}
 
+# why is this not working it worked before
+hi_county <- data_2024 |> 
+  filter(state == "Hawaii", !is.na(county)) |> 
+  arrange(percent_adults_with_obesity)
+
+plot_usmap(hi_county, values = "percent_adults_with_obesity", regions = "counties", include = "HI") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Obesity Rate (%)"
+  ) +
+  labs(title = "Average Adult Obesity Rate by County in Hawaii (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+```
+
+# Maps Food Index
+
+```{r}
+ms_food_plot <- plot_usmap(data = ms_county, values = "food_environment_index", regions = "counties", include = "MS") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Food Index Rating"
+  ) +
+  labs(title = "Average Food Index by County in Mississippi (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+
+hi_physical_plot <- plot_usmap(data = hi_county, values = "food_environment_index", regions = "counties", include = "HI") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Food Index Rating"
+  ) +
+  labs(title = "Average Food Index by County in Hawaii (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+
+ms_county |> select(county, food_environment_index)
+hi_county |> select(county, food_environment_index)
+```
+
+# Maps Physical Inactive
+
+```{r}
+ms_physical_plot <- plot_usmap(data = ms_county, values = "percent_physically_inactive", regions = "counties", include = "MS") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Physically Inactive (%)"
+  ) +
+  labs(title = "Average Physically Inactive by County in Mississippi (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+
+hi_physical_plot <- plot_usmap(data = hi_county, values = "percent_physically_inactive", regions = "counties", include = "HI") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Physically Inactive (%)"
+  ) +
+  labs(title = "Average Physically Inactive by County in Hawaii (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+```
+
+```{r}
+library(patchwork)
+
+# flip the color scheme of the food
+
+combined_ms_plot <- 
+  ms_obesity_plot + labs(title = NULL, subtitle = NULL) +
+  ms_food_plot + labs(title = NULL, subtitle = NULL) +
+  ms_physical_plot + labs(title = NULL, subtitle = NULL)
+
+combined_ms_plot
+```
+
+# Hierarchical Clustering 
+
+```{r}
+library(ggdendro)
+
+# should we use the variable percent_with_access_to_exercise_opportunities??
+
+std_county_data <- data_2024 |> 
+  filter(
+    !is.na(food_environment_index),
+    !is.na(percent_physically_inactive),
+    !is.na(county)
+  ) |> 
+  select(percent_physically_inactive, food_environment_index) |>
+  scale()
+
+rownames(std_county_data) <- data_2024$county
+
+```
+
+```{r}
+
+dist_mat <- dist(std_county_data, method = "euclidean")
+hc <- hclust(dist_mat, method = "complete")
+dendro_data <- ggdendro::dendro_data(hc)
+
+```

@@ -15,9 +15,9 @@ theme_set(theme_minimal())
 ```
 
 ```{r}
-data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Peng/2024_county_health_release_data_-_v1.xlsx', sheet = "Select Measure Data", skip = 1)
+data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2024_county_health_release_data_-_v1.xlsx', sheet = "Select Measure Data", skip = 1)
 
-data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Peng/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
+data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
 ```
 ```{r}
 names(data_2024)
@@ -85,21 +85,4 @@ fviz_cluster(km, data = cluster_data,
 
 ```
 
-```{r}
-# # Add clusters back to data_2024 (excluding NA rows used in clustering)
-# clustered_data <- data_2024 |>
-#   select(FIPS, State, County,
-#          Obesity = `% Adults with Obesity`,
-#          Inactivity = `% Physically Inactive`,
-#          FoodAccess = `Food Environment Index`) |>
-#   na.omit() |>
-#   mutate(cluster = as.factor(km$cluster),
-#          fipscode = sprintf("%05d", as.numeric(FIPS)))  # ensure 5-digit FIPS
-# 
-# plot_usmap(data = clustered_data, values = "cluster", regions = "counties") +
-#   scale_fill_brewer(palette = "Set2", name = "Cluster") +
-#   labs(title = "County Clusters: Obesity, Inactivity, and Food Access") +
-#   theme(legend.position = "right")
-
-```
 

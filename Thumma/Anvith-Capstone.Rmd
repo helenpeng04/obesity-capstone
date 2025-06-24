@@ -1,0 +1,105 @@
+---
+title: "Graphs"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(cluster)
+library(factoextra)
+library(usmap)
+theme_set(theme_minimal())
+```
+
+```{r}
+data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Peng/2024_county_health_release_data_-_v1.xlsx', sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Peng/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
+```
+```{r}
+names(data_2024)
+```
+```{r}
+eda_2024 <- data_2024 |>
+  select(State, 
+         County, 
+         Obesity = `% Adults with Obesity`, 
+         Population = `Population...169`, 
+         Inactivity = `% Physically Inactive`,
+         FoodAccess = `Food Environment Index`) |>
+  drop_na()
+
+# compute average obesity rate by state
+state_avgs <- eda_2024 |>
+  group_by(State) |>
+  summarize(avg_obesity = mean(Obesity, na.rm = T)) |>
+  arrange(desc(avg_obesity))
+
+# get one lowest, one highest, and 3 random from the rest
+highest_state  <- state_avgs |> slice(1) |> pull(State)
+lowest_state <- state_avgs |> slice(n() - 1) |> pull(State)
+other_states  <- state_avgs |> filter(!(State %in% c(lowest_state, highest_state))) |>
+                   slice_sample(n = 3) |> pull(State)
+
+
+# selected states into a vector
+selected_states <- c(highest_state, lowest_state, other_states)
+
+# Filter states
+eda_2024_filtered <- eda_2024 |> 
+  filter(State %in% selected_states)
+
+# Plot 
+eda_2024_filtered |>
+  ggplot(aes(x = Population, y = Obesity, color = State)) +
+  geom_jitter(alpha = 0.7, width = 0.1, height = 0.5, size = 2) +
+  geom_hline(data = state_avgs |> 
+               filter(State %in% selected_states),
+             aes(yintercept = avg_obesity, color = State),
+             linetype = "dashed", size = 1) +
+  scale_x_log10() +
+  labs(title = "% Adults with Obesity by County (2024) - Selected States",
+       x = "Population (log scale)",
+       y = "% Adults with Obesity",
+       color = "State")
+```
+
+```{r}
+# Select and scale the variables
+cluster_data <- eda_2024 |>
+  select(Obesity, Inactivity, FoodAccess) |>
+  na.omit() |>
+  scale()
+
+
+set.seed(42)
+km <- kmeans(cluster_data, centers = 4, nstart = 25)
+
+# Visualize clusters
+fviz_cluster(km, data = cluster_data,
+             geom = "point",
+             main = "Clusters of Counties by Obesity, Inactivity, and Food Access")
+
+```
+
+```{r}
+# # Add clusters back to data_2024 (excluding NA rows used in clustering)
+# clustered_data <- data_2024 |>
+#   select(FIPS, State, County,
+#          Obesity = `% Adults with Obesity`,
+#          Inactivity = `% Physically Inactive`,
+#          FoodAccess = `Food Environment Index`) |>
+#   na.omit() |>
+#   mutate(cluster = as.factor(km$cluster),
+#          fipscode = sprintf("%05d", as.numeric(FIPS)))  # ensure 5-digit FIPS
+# 
+# plot_usmap(data = clustered_data, values = "cluster", regions = "counties") +
+#   scale_fill_brewer(palette = "Set2", name = "Cluster") +
+#   labs(title = "County Clusters: Obesity, Inactivity, and Food Access") +
+#   theme(legend.position = "right")
+
+```
+

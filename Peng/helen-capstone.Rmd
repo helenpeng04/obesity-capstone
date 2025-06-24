@@ -4,7 +4,7 @@ author: "Helen Peng"
 output: html_document
 ---
 
-# Maps Obesity Rates
+# Maps 
 
 ```{r}
 library(readxl)
@@ -15,22 +15,23 @@ data_2024 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capsto
 data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
 
 data_2024 <- data_2024 |>
-  select(FIPS, State, County, 4, 42:49, 80:95) |>
-  janitor::clean_names() 
+  select(FIPS, State, County, 80, 83, 84, 85, 86, 89) |>
+  janitor::clean_names() |> 
+  filter(!is.na(county)) # when county = NA that is the statewide but i just avg all counties for statewide info idk which version is better
 
 data_2025 <- data_2025 |> 
-  select(FIPS, State, County,4, 42:49,80:95) |> 
-  janitor::clean_names()
+  select(FIPS, State, County, 80, 83, 84, 85, 86, 89) |>
+  janitor::clean_names() |> 
+  filter(!is.na(county)) 
 
 ```
 
 ```{r}
 library(usmap)
 
-# filtering out statewide baseline rows (where county is NA)
 state_obesity <- data_2024 |> 
   select(state, county, percent_adults_with_obesity) |> 
-  filter(!is.na(state), !is.na(county), !is.na(percent_adults_with_obesity)) |> 
+  filter(!is.na(percent_adults_with_obesity)) |> 
   group_by(state) |> 
   summarize(obesity_rate = mean(percent_adults_with_obesity, na.rm = TRUE)) |> 
   arrange(obesity_rate)
@@ -45,8 +46,27 @@ plot_usmap(data = state_obesity, values = "obesity_rate", regions = "states") +
 ```
 
 ```{r}
+county_obesity <- data_2024 |> 
+  filter(!is.na(percent_adults_with_obesity)) |> 
+  select(fips, percent_adults_with_obesity)
+
+county_plot <- plot_usmap(data = county_obesity, values = "percent_adults_with_obesity", regions = "counties") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Obesity Rate (%)"
+  ) +
+  labs(title = "Average Adult Obesity Rates by County (2024)",
+       subtitle = "Based on County Health Rankings Data") +
+  theme(legend.position = "right")
+
+county_plot
+```
+
+```{r}
+library(patchwork)
+
+# Statistics for Mississippi, the state with the highest obesity rate
 ms_county <- data_2024 |> 
-  filter(state == "Mississippi", !is.na(county)) |> 
+  filter(state == "Mississippi") |> 
   arrange(percent_adults_with_obesity)
 
 ms_obesity_plot <- plot_usmap(data = ms_county, values = "percent_adults_with_obesity", regions = "counties", include = "MS") +
@@ -57,27 +77,6 @@ ms_obesity_plot <- plot_usmap(data = ms_county, values = "percent_adults_with_ob
        subtitle = "Based on County Health Rankings Data") +
   theme(legend.position = "right")
 
-```
-
-```{r}
-
-# why is this not working it worked before
-hi_county <- data_2024 |> 
-  filter(state == "Hawaii", !is.na(county)) |> 
-  arrange(percent_adults_with_obesity)
-
-plot_usmap(hi_county, values = "percent_adults_with_obesity", regions = "counties", include = "HI") +
-  scale_fill_continuous(
-    low = "lightyellow", high = "darkred", name = "Obesity Rate (%)"
-  ) +
-  labs(title = "Average Adult Obesity Rate by County in Hawaii (2024)",
-       subtitle = "Based on County Health Rankings Data") +
-  theme(legend.position = "right")
-```
-
-# Maps Food Index
-
-```{r}
 ms_food_plot <- plot_usmap(data = ms_county, values = "food_environment_index", regions = "counties", include = "MS") +
   scale_fill_continuous(
     low = "lightyellow", high = "darkred", name = "Food Index Rating"
@@ -86,21 +85,6 @@ ms_food_plot <- plot_usmap(data = ms_county, values = "food_environment_index", 
        subtitle = "Based on County Health Rankings Data") +
   theme(legend.position = "right")
 
-hi_physical_plot <- plot_usmap(data = hi_county, values = "food_environment_index", regions = "counties", include = "HI") +
-  scale_fill_continuous(
-    low = "lightyellow", high = "darkred", name = "Food Index Rating"
-  ) +
-  labs(title = "Average Food Index by County in Hawaii (2024)",
-       subtitle = "Based on County Health Rankings Data") +
-  theme(legend.position = "right")
-
-ms_county |> select(county, food_environment_index)
-hi_county |> select(county, food_environment_index)
-```
-
-# Maps Physical Inactive
-
-```{r}
 ms_physical_plot <- plot_usmap(data = ms_county, values = "percent_physically_inactive", regions = "counties", include = "MS") +
   scale_fill_continuous(
     low = "lightyellow", high = "darkred", name = "Physically Inactive (%)"
@@ -109,26 +93,44 @@ ms_physical_plot <- plot_usmap(data = ms_county, values = "percent_physically_in
        subtitle = "Based on County Health Rankings Data") +
   theme(legend.position = "right")
 
-hi_physical_plot <- plot_usmap(data = hi_county, values = "percent_physically_inactive", regions = "counties", include = "HI") +
-  scale_fill_continuous(
-    low = "lightyellow", high = "darkred", name = "Physically Inactive (%)"
-  ) +
-  labs(title = "Average Physically Inactive by County in Hawaii (2024)",
-       subtitle = "Based on County Health Rankings Data") +
-  theme(legend.position = "right")
-```
-
-```{r}
-library(patchwork)
-
-# flip the color scheme of the food
-
 combined_ms_plot <- 
   ms_obesity_plot + labs(title = NULL, subtitle = NULL) +
   ms_food_plot + labs(title = NULL, subtitle = NULL) +
-  ms_physical_plot + labs(title = NULL, subtitle = NULL)
+  ms_physical_plot + labs(title = NULL, subtitle = NULL) +
+  plot_annotation(
+  title = "Statistics for Mississippi by County",
+  subtitle = "Obesity, Food Access, and Physical Inactivity Rates"
+)
 
 combined_ms_plot
+```
+
+# Scatter plots
+
+```{r}
+# sum(is.na(data_2024$food_environment_index))
+# sum(is.na(data_2024$percent_adults_with_obesity))
+# sum(is.na(data_2024$percent_physically_inactive))
+
+food_obesity_plot <- data_2024 |> 
+  filter(!is.na(food_environment_index), !is.na(percent_adults_with_obesity)) |> 
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point() +
+  labs(x = "Food Index Rating",
+       y = "Obesity Rate (%)") +
+  geom_smooth(method = "lm")
+
+physical_obesity_plot <- data_2024 |> 
+  filter(!is.na(percent_physically_inactive), !is.na(percent_adults_with_obesity)) |> 
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point() +
+  labs(x = "Phyiscally Inactive (%)",
+       y = "Obesity Rate (%)") +
+  geom_smooth(method = "lm")
+
+combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
+  plot_annotation(title = "Food Access and Physical Inactivity vs. Obesity Rate")
+combined_scatterplots
 ```
 
 # Hierarchical Clustering 
@@ -136,25 +138,119 @@ combined_ms_plot
 ```{r}
 library(ggdendro)
 
-# should we use the variable percent_with_access_to_exercise_opportunities??
+std_data_features <- data_2024 |> 
+  filter(!is.na(percent_adults_with_obesity), 
+         !is.na(percent_physically_inactive), 
+         !is.na(food_environment_index)) |> 
+  select(percent_adults_with_obesity, percent_physically_inactive, food_environment_index) |> 
+  na.omit() |> 
+  scale() 
 
-std_county_data <- data_2024 |> 
-  filter(
-    !is.na(food_environment_index),
-    !is.na(percent_physically_inactive),
-    !is.na(county)
-  ) |> 
-  select(percent_physically_inactive, food_environment_index) |>
-  scale()
+county_dist <- dist(std_data_features, method = "euclidean")
 
-rownames(std_county_data) <- data_2024$county
+hc_complete <- hclust(county_dist, method = "complete")
+hc_single   <- hclust(county_dist, method = "single")
+hc_average  <- hclust(county_dist, method = "average")
+
+plot_dendro <- function(hc_obj, title_text) {
+  ggdendrogram(hc_obj, labels = FALSE, leaf_labels = FALSE, theme_dendro = FALSE) +
+    labs(title = title_text, y = "Dissimilarity") +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      plot.title = element_text(size = 12, face = "bold"),
+      panel.grid = element_blank()
+    )
+}
+
+dendro_complete <- plot_dendro(hc_complete, "Complete Linkage")
+dendro_single   <- plot_dendro(hc_single, "Single Linkage")
+dendro_average  <- plot_dendro(hc_average, "Average Linkage")
+
+dendro_combined <- dendro_single + dendro_average + dendro_complete +
+  plot_layout(ncol = 3)
+
+dendro_complete
+```
+
+```{r}
+std_data_features |> 
+ fviz_nbclust(FUN = hcut, method = "wss")
+```
+
+```{r}
+library(factoextra)
+
+fviz_cluster(
+  list(data = std_data_features,
+       cluster = cutree(hc_complete, k = 4)),
+  geom = "point",
+  ellipse = FALSE
+) +
+  ggthemes::scale_color_colorblind() +
+  theme_bw()
+
+# trying to see which variables contribute to the pc
+# pca_res <- prcomp(std_data_features, center = TRUE, scale. = TRUE)
+# pca_res$rotation[, 1:2]
+# 
+# fviz_pca_var(pca_res, col.var = "contrib") +
+#   scale_color_gradient2(low = "lightblue", mid = "skyblue", high = "darkblue", midpoint = 50) +
+#   theme_minimal()
+```
+
+```{r}
+data_with_clusters <- data_2024 |>   
+  filter(!is.na(percent_adults_with_obesity), 
+         !is.na(percent_physically_inactive), 
+         !is.na(food_environment_index), 
+         !is.na(fips)) |> 
+  mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
+
+plot_usmap(data = data_with_clusters, values = "cluster", regions = "counties") +
+  # scale_fill_brewer(palette = "Set2", name = "Cluster") +
+  ggthemes::scale_fill_colorblind(name = "Cluster") +
+  labs(title = "County Clusters (Complete Linkage)",
+       subtitle = "Based on Physical Health and Food") +
+  theme(legend.position = "right") 
 
 ```
 
 ```{r}
+# Post-clustering analysis
+cluster_summary <- data_with_clusters |>
+  group_by(cluster) |>
+  summarize(
+    n_counties = n(),
+    mean_physically_inactive = mean(percent_physically_inactive, na.rm = TRUE),
+    mean_food_index = mean(food_environment_index, na.rm = TRUE),
+    mean_obesity_rate = mean(percent_adults_with_obesity, na.rm = TRUE),
+  )
+print(cluster_summary)
 
-dist_mat <- dist(std_county_data, method = "euclidean")
-hc <- hclust(dist_mat, method = "complete")
-dendro_data <- ggdendro::dendro_data(hc)
+library(knitr)
+
+cluster_summary |> 
+  rename(
+    `Cluster` = cluster,
+    `Number of Counties` = n_counties,
+    `Physically Inactive (%)` = mean_physically_inactive,
+    `Food Environment Index` = mean_food_index,
+    `Obesity Rate (%)` = mean_obesity_rate
+  ) |> 
+  kable(digits = 2, 
+        caption = "Cluster Summary: Average Health and Food Metrics by Cluster")
 
 ```
+
+| Cluster | \% Inactive | Food Index | Obesity Rate | Interpretation |
+|----------:|-----------|-----------|-----------|-------------------------------|
+| **1** | 30% | 7 | 40% | High inactivity, decent food access, high obesity |
+| **2** | 38% | 4.5 | 45% | Very inactive, poor food access, highest obesity |
+| **3** | 23% | 8 | 34% | Most active, best food access, lowest obesity |
+| **4** | 27% | 4.5 | 37% | Moderately active, poor food access, mid obesity |
+
+Cluster 2 is the worst case and cluster 3 is the best case
+
+1 and 4 be weird

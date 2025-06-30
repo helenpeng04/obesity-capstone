@@ -1,2 +1,2 @@
 # Obesity Rates Across the U.S. Capstone Project
-For SURE 2025
+For CMU SURE 2025

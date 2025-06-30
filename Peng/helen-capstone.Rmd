@@ -109,6 +109,34 @@ combined_ms_plot <-
 combined_ms_plot
 ```
 
+```{r dynamic_map_2025}
+library(tidyverse)
+library(tigris)
+library(sf)
+library(tmap)
+
+options(tigris_use_cache = TRUE)
+
+counties_sf <- counties(cb = TRUE, resolution = "5m", class = "sf") |>
+  mutate(fips = paste0(STATEFP, COUNTYFP))
+
+county_data <- counties_sf |> 
+  left_join(data_2025, by = "fips")
+
+tmap_mode("view") 
+
+tm_shape(county_data) +
+  tm_polygons(
+    fill = "percent_adults_with_obesity",
+    fill.scale = tm_scale_intervals(
+      style = "quantile",
+      values = "YlOrRd"
+    ),
+    fill.legend = tm_legend(title = "Obesity Rate (%)")
+  ) +
+  tm_layout(legend.outside = TRUE)
+```
+
 # Scatter plots
 
 ```{r scatterplot_2024}

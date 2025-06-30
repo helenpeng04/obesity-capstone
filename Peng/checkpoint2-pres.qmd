@@ -86,7 +86,6 @@ options(tigris_use_cache = TRUE)
 counties_sf <- counties(cb = TRUE, resolution = "5m", class = "sf") |>
   mutate(fips = paste0(STATEFP, COUNTYFP))
 
-# Assuming data_2025 has a column "fips" and "percent_adults_with_obesity"
 county_data <- counties_sf |> 
   left_join(data_2025, by = "fips")
 
@@ -164,6 +163,7 @@ ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FA
 ```
 
 ```{r echo = FALSE}
+library(usmap)
 data_with_clusters <- data_2024 |>   
   mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
 
@@ -204,15 +204,15 @@ Cluster 4: Moderately active, poor food access, mid obesity
 
 ## Plan of Action
 
--   Conduct EDA on 2024 data, specifically:
+-   Completed:
 
     -   Create a map to see geographic data of obesity rates
 
     -   Create scatter plots to see the correlation between obesity, food access, and physical inactivity
 
-    -   Perform both hard and soft clustering to identify patterns or groupings within the data
+    -   Perform hard clustering to identify patterns or groupings within the data
 
--   Modeling Approaches
+-   Next Steps:
 
     -   Apply linear regression and regularized models (Ridge, Lasso, Elastic Net)
 
@@ -220,4 +220,4 @@ Cluster 4: Moderately active, poor food access, mid obesity
 
     -   Use ensemble methods such as Random Forest and Gradient Boosting
 
--   Assess performance using Mean Squared Error (MSE) and other evaluation metrics
+    -   Assess performance using Mean Squared Error (MSE) and other evaluation metrics

@@ -1,0 +1,223 @@
+---
+title: "Do physical inactivity level and access to healthy food affect obesity rate at the county level?"
+author: Helen Peng, Anvith Thumma, and Jordan Faustin
+format: 
+  revealjs:
+    theme: simple
+    slide-number: true
+    smaller: true
+editor: visual
+---
+
+## Why This Question is Important
+
+-   **Public Health Crisis:** Obesity is a major contributor to chronic diseases (diabetes, heart disease, cancer) and rising healthcare costs.
+
+-   **Disparities in Obesity:** Obesity rates vary widely by region, income, and race/ethnicity. Identifying structural barriers (like food access and inactivity) can inform equitable policies.
+
+-   **Rise in Weight Loss Drugs:** The emergence of GLP‑1 drugs like Ozempic and Wegovy has transformed obesity treatment, making it critical to understand baseline disparities in food access and physical inactivity to identify who stands to benefit most—and who may be left behind.
+
+## Data Overview
+
+-   Observations: Data at the county level across all 50 U.S. states in 202
+
+-   Variables of Interest:
+
+    -   \% Adults with Obesity
+
+    -   \% Physically Inactive
+
+    -   Food Environment Index (1-10) - Higher is Better
+
+    -   Population
+
+    -   State and County Identifiers
+
+## Plan of Action
+
+-   Conduct EDA on 2024 data, specifically:
+
+    -   Create a map to see geographic data of obesity rates
+
+    -   Create scatter plots to see the correlation between obesity, food access, and physical inactivity
+
+    -   Perform both hard and soft clustering to identify patterns or groupings within the data
+
+-   Modeling Approaches
+
+    -   Apply linear regression and regularized models (Ridge, Lasso, Elastic Net)
+
+    -   Fit a Generalized Additive Model (GAM) for nonlinear relationships
+
+    -   Use ensemble methods such as Random Forest and Gradient Boosting
+
+-   Assess performance using Mean Squared Error (MSE) and other relevant metrics
+
+## East coast has higher obesity rate than the west coast
+
+```{r echo = FALSE, fig.align='center'}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2024 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2024_county_health_release_data_-_v1.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+data_2024 <- data_2024 |>
+  select(FIPS, State, County, 80, 84, 86, 169) |>
+  janitor::clean_names() |> 
+  filter(!is.na(county))
+
+data_2025 <- data_2025 |> 
+  select(FIPS, State, County, 111, 147, 149, 215) |>
+  janitor::clean_names() |> 
+  filter(!is.na(county)) 
+```
+
+```{r cache = TRUE}
+library(tidyverse)
+library(tigris)
+library(sf)
+library(tmap)
+
+options(tigris_use_cache = TRUE)
+
+counties_sf <- counties(cb = TRUE, resolution = "5m", class = "sf") |>
+  mutate(fips = paste0(STATEFP, COUNTYFP))
+
+# Assuming data_2025 has a column "fips" and "percent_adults_with_obesity"
+county_data <- counties_sf |> 
+  left_join(data_2025, by = "fips")
+
+tmap_mode("view") 
+
+tm_shape(county_data) +
+  tm_polygons(
+    fill = "percent_adults_with_obesity",
+    fill.scale = tm_scale_intervals(
+      style = "quantile",
+      values = "YlOrRd"
+    ),
+    fill.legend = tm_legend(title = "Obesity Rate (%)")
+  ) +
+  tm_layout(legend.outside = TRUE)
+
+```
+
+## Obesity rates increases as physical inactivity increases and better access to food decreases
+
+```{r echo = FALSE, fig.align='center'}
+library(patchwork)
+
+food_obesity_plot <- data_2024 |>
+  filter(!is.na(food_environment_index), !is.na(percent_adults_with_obesity)) |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point() +
+  labs(x = "Food Environment Index (Higher = Better Access)",
+       y = "Obesity Rate (%)") +
+  geom_smooth(method = "lm")
+
+physical_obesity_plot <- data_2024 |>
+  filter(!is.na(percent_physically_inactive), !is.na(percent_adults_with_obesity)) |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point() +
+  labs(x = "Phyiscally Inactive Rate (%)",
+       y = "Obesity Rate (%)") +
+  geom_smooth(method = "lm")
+
+combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
+  plot_annotation(title = "Food Enivronment Index and Physical Inactivity Rate vs. Obesity Rate")
+combined_scatterplots
+```
+
+## Hierarchical clustering reveals four distinct groups (incomplete assertion)
+
+```{r include = FALSE}
+library(ggdendro)
+
+data_2024 <- data_2024 |>
+  select(fips,
+         state,
+         county,
+         percent_adults_with_obesity,
+         percent_physically_inactive,
+         food_environment_index) |> 
+  drop_na()
+
+std_data_features <- data_2024 |> 
+  select(percent_adults_with_obesity, percent_physically_inactive, food_environment_index) |> 
+  scale()
+
+county_dist <- dist(std_data_features, method = "euclidean")
+hc_complete <- hclust(county_dist, method = "complete")
+
+ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FALSE) +    labs(title = "Complete Linkage", y = "Dissimilarity") +
+  theme_minimal() +
+  theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      plot.title = element_text(size = 12, face = "bold"),
+      panel.grid = element_blank()
+  )
+
+```
+
+```{r echo = FALSE}
+data_with_clusters <- data_2024 |>   
+  mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
+
+plot_usmap(data = data_with_clusters, values = "cluster", regions = "counties") +
+  ggthemes::scale_fill_colorblind(name = "Cluster") +
+  theme(legend.position = "right") 
+```
+
+## Clustering summary (incomplete assertion)
+
+```{r}
+library(knitr)
+cluster_summary <- data_with_clusters |>
+  group_by(cluster) |>
+  summarize(
+    n_counties = n(),
+    mean_physically_inactive = mean(percent_physically_inactive, na.rm = TRUE),
+    mean_food_index = mean(food_environment_index, na.rm = TRUE),
+    mean_obesity_rate = mean(percent_adults_with_obesity, na.rm = TRUE),
+  )
+
+cluster_summary |> 
+  rename(
+    `Cluster` = cluster,
+    `Number of Counties` = n_counties,
+    `Physically Inactive (%)` = mean_physically_inactive,
+    `Food Environment Index` = mean_food_index,
+    `Obesity Rate (%)` = mean_obesity_rate
+  ) |> 
+  kable(digits = 2, 
+        caption = "Cluster Summary: Average Health and Food Metrics by Cluster")
+```
+
+Cluster 1: High inactivity, decent food access, high obesity\
+Cluster 2: Very inactive, poor food access, highest obesity - Worst Case\
+Cluster 3: Most active, best food access, lowest obesity - Best Case\
+Cluster 4: Moderately active, poor food access, mid obesity
+
+## Plan of Action
+
+-   Conduct EDA on 2024 data, specifically:
+
+    -   Create a map to see geographic data of obesity rates
+
+    -   Create scatter plots to see the correlation between obesity, food access, and physical inactivity
+
+    -   Perform both hard and soft clustering to identify patterns or groupings within the data
+
+-   Modeling Approaches
+
+    -   Apply linear regression and regularized models (Ridge, Lasso, Elastic Net)
+
+    -   Fit a Generalized Additive Model (GAM) for nonlinear relationships
+
+    -   Use ensemble methods such as Random Forest and Gradient Boosting
+
+-   Assess performance using Mean Squared Error (MSE) and other evaluation metrics

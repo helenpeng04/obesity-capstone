@@ -11,22 +11,32 @@ theme_set(theme_bw())
 
 data_2024 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2024_county_health_release_data_-_v1.xlsx", sheet = "Select Measure Data", skip = 1)
 
-data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
-
 data_2024 <- data_2024 |>
   select(FIPS, State, County, 80, 84, 86, 169) |>
   janitor::clean_names() |> 
   filter(!is.na(county))
 
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
+
+food_index_2025 <- food_index_2025 |> 
+  filter(!is.na(County)) |> 
+  select(FIPS, 85) |> 
+  janitor::clean_names() 
+
 data_2025 <- data_2025 |> 
   select(FIPS, State, County, 111, 147, 149, 215) |>
   janitor::clean_names() |> 
-  filter(!is.na(county)) # could still use food environment index but we would need to merge the datasets
+  filter(!is.na(county)) 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips")
+rm(food_index_2025)
 ```
 
 # Maps
 
-```{r static_map_2024}
+```{r static_maps}
 library(usmap)
 plot_usmap(data = data_2024, values = "percent_adults_with_obesity", regions = "counties") +
   scale_fill_continuous(
@@ -34,8 +44,11 @@ plot_usmap(data = data_2024, values = "percent_adults_with_obesity", regions = "
   ) +
   theme(legend.position = "right")
 
-data_2024[is.na(data_2024$percent_adults_with_obesity), ]
-data_2024[data_2024$state == "Connecticut",]
+plot_usmap(data = data_2025, values = "percent_adults_with_obesity", regions = "counties") +
+  scale_fill_continuous(
+    low = "lightyellow", high = "darkred", name = "Obesity Rate (%)"
+  ) +
+  theme(legend.position = "right")
 ```
 
 ```{r dynamic_map_2024}
@@ -65,7 +78,7 @@ tm_shape(county_data_prechange) +
   tm_layout(legend.outside = TRUE)
 ```
 
-```{r mississippi}
+```{r mississippi_2024}
 library(patchwork)
 
 # Statistics for Mississippi, the state with the highest obesity rate
@@ -109,10 +122,8 @@ combined_ms_plot <-
 combined_ms_plot
 ```
 
-```{r dynamic_map_2025}
-library(tidyverse)
+```{r dynamic_tmap_2025}
 library(tigris)
-library(sf)
 library(tmap)
 
 options(tigris_use_cache = TRUE)
@@ -135,12 +146,61 @@ tm_shape(county_data) +
     fill.legend = tm_legend(title = "Obesity Rate (%)")
   ) +
   tm_layout(legend.outside = TRUE)
+
+#tmap takes forever to render but i like it more visually and also when you hover you get more info
+```
+
+```{r leftlet_map_2025}
+library(tigris)
+library(leaflet)
+library(sf)
+
+options(tigris_use_cache = TRUE)
+
+counties_sf <- counties(cb = TRUE, resolution = "5m", class = "sf") |>
+  mutate(fips = paste0(STATEFP, COUNTYFP))
+
+county_data <- counties_sf |> 
+  left_join(data_2025, by = "fips") |>
+  filter(!is.na(percent_adults_with_obesity))
+
+county_data <- rmapshaper::ms_simplify(county_data, keep = 0.05)
+q_brks <- quantile(county_data$percent_adults_with_obesity, probs = seq(0, 1, length.out = 6), na.rm = TRUE)
+
+pal <- colorBin(
+  palette = "YlOrRd",
+  bins = q_brks,
+  na.color = "transparent"
+)
+
+leaflet(county_data) |> 
+  addProviderTiles("CartoDB.Positron") |> 
+  addPolygons(
+    fillColor = ~pal(percent_adults_with_obesity),
+    color = "black",
+    weight = 0.3,
+    fillOpacity = 0.8,
+    label = ~paste0(NAME, ": ", round(percent_adults_with_obesity, 1), "%"),
+    highlightOptions = highlightOptions(
+      weight = 1,
+      color = "#666",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    )
+  ) |> 
+  addLegend(
+    pal = pal,
+    values = ~percent_adults_with_obesity,
+    title = "Obesity Rate (%)",
+    position = "bottomright"
+  )
 ```
 
 # Scatter plots
 
 ```{r scatterplot_2024}
 library(patchwork)
+
 food_obesity_plot <- data_2024 |> 
   filter(!is.na(food_environment_index), !is.na(percent_adults_with_obesity)) |> 
   ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
@@ -182,19 +242,43 @@ ggpairs(pair_data,
   labs(title = "Pair Plot: Obesity, Physical Inactivity, and Food Environment Index")
 ```
 
+```{r scatterplot_2025}
+library(patchwork)
+
+food_obesity_plot <- data_2025 |> 
+  filter(!is.na(food_environment_index), !is.na(percent_adults_with_obesity)) |> 
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point() +
+  labs(x = "Food Environment Index (Higher = Better Access)",
+       y = "Obesity Rate (%)") +
+  geom_smooth(method = "lm")
+
+physical_obesity_plot <- data_2025 |> 
+  filter(!is.na(percent_physically_inactive), !is.na(percent_adults_with_obesity)) |> 
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point() +
+  labs(x = "Phyiscally Inactive Rate (%)",
+       y = "Obesity Rate (%)") +
+  geom_smooth(method = "lm")
+
+combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
+  plot_annotation(title = "Food Enivronment Index and Physical Inactivity Rate vs. Obesity Rate")
+combined_scatterplots
+```
+
 # Hard Clustering (Hierarchical Clustering)
 
-```{r dendro_2024}
+```{r dendro_2025}
 library(ggdendro)
 
-missing_data <- data_2024 |> 
+missing_data <- data_2025 |> 
   filter((is.na(percent_adults_with_obesity) |
           is.na(percent_physically_inactive) |
           is.na(food_environment_index)) &
          !is.na(fips)) |> 
-  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index)
+  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) # note: old fips for CT are still in this set of missing data
 
-data_2024 <- data_2024 |>
+data_2025 <- data_2025 |>
   select(fips,
          state,
          county,
@@ -203,7 +287,7 @@ data_2024 <- data_2024 |>
          food_environment_index) |> 
   drop_na()
 
-std_data_features <- data_2024 |> 
+std_data_features <- data_2025 |> 
   select(percent_adults_with_obesity, percent_physically_inactive, food_environment_index) |> 
   scale()
 
@@ -235,7 +319,8 @@ dendro_combined <- dendro_single + dendro_average + dendro_complete +
 dendro_combined
 ```
 
-```{r clusters_2024}
+```{r clusters_2025}
+library(factoextra)
 fviz_cluster(
   list(data = std_data_features,
        cluster = cutree(hc_complete, k = 4)),
@@ -246,8 +331,8 @@ fviz_cluster(
   theme_bw()
 ```
 
-```{r map_clusters_2024}
-data_with_clusters <- data_2024 |>   
+```{r map_clusters_2025}
+data_with_clusters <- data_2025 |>   
   mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
 
 plot_usmap(data = data_with_clusters, values = "cluster", regions = "counties") +
@@ -256,7 +341,7 @@ plot_usmap(data = data_with_clusters, values = "cluster", regions = "counties") 
 
 ```
 
-```{r clusters_summary_2024}
+```{r clusters_summary_2025}
 library(knitr)
 
 # Post-clustering analysis
@@ -283,14 +368,14 @@ cluster_summary |>
 
 ```
 
-Cluster 1: High inactivity, decent food access, high obesity\
-Cluster 2: Very inactive, poor food access, highest obesity - Worst Case\
-Cluster 3: Most active, best food access, lowest obesity - Best Case\
-Cluster 4: Moderately active, poor food access, mid obesity
+**Cluster 1:** Moderately inactive, decent food access, high obesity
+**Cluster 2:** Very inactive, moderate food access, highest obesity – Worst Case
+**Cluster 3:** Very inactive, worst food access, high obesity – Critical Concern
+**Cluster 4:** Most active, best food access, lowest obesity – Best Case
 
 # Modeling
 
-Note for Modeling: Response Variable is Continuous and Bounded. What models can we use to handle bounded variables? Beta regression??
+Note for Modeling: Response Variable is Continuous and Bounded. What models can we use to handle bounded variables? Beta regression?? Below I'm just listing all the methods we learned.
 
 ## Simple Linear Regression
 
@@ -301,6 +386,10 @@ Note for Modeling: Response Variable is Continuous and Bounded. What models can 
 ## Elastic Net Regression
 
 ## Generalized Additive Models
+
+## K-Nearest Neighbors
+
+## Splines
 
 ## Random Forest Models
 

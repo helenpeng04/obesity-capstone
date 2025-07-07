@@ -11,17 +11,21 @@ library(ggplot2)
 library(cluster)
 library(factoextra)
 library(usmap)
+library(patchwork)
 theme_set(theme_minimal())
 ```
 
 ```{r}
 data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2024_county_health_release_data_-_v1.xlsx', sheet = "Select Measure Data", skip = 1)
-
-data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
 ```
 ```{r}
-names(data_2024)
+data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
+
 ```
+
+
 ```{r}
 eda_2024 <- data_2024 |>
   select(State, 
@@ -31,7 +35,37 @@ eda_2024 <- data_2024 |>
          Inactivity = `% Physically Inactive`,
          FoodAccess = `Food Environment Index`) |>
   drop_na()
+```
 
+```{r}
+food_index_2025 <- food_index_2025 |> 
+  filter(!is.na(County)) |> 
+  select(FIPS, 85) |> 
+  janitor::clean_names() 
+
+data_2025 <- data_2025 |> 
+  select(FIPS, State, County, 111, 147, 149, 215) |>
+  janitor::clean_names() |> 
+  filter(!is.na(county)) 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips")
+rm(food_index_2025)
+```
+
+```{r}
+names(data_2025)
+```
+```{r}
+data_2025 <- data_2025 |> 
+  rename(
+    obesity = percent_adults_with_obesity,
+    inactivity = percent_physically_inactive,
+    food_index = food_environment_index
+  )
+```
+
+
+```{r}
 # compute average obesity rate by state
 state_avgs <- eda_2024 |>
   group_by(State) |>
@@ -59,7 +93,7 @@ eda_2024_filtered |>
   geom_hline(data = state_avgs |> 
                filter(State %in% selected_states),
              aes(yintercept = avg_obesity, color = State),
-             linetype = "dashed", size = 1) +
+             linetype = "dashed", linewidth = 1) +
   scale_x_log10() +
   labs(title = "% Adults with Obesity by County (2024) - Selected States",
        x = "Population (log scale)",
@@ -84,5 +118,70 @@ fviz_cluster(km, data = cluster_data,
              main = "Clusters of Counties by Obesity, Inactivity, and Food Access")
 
 ```
+
+```{r}
+# Scatter plot: Obesity vs Inactivity
+p1 <- data_2025 |>
+  ggplot(aes(x = inactivity, y = obesity)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  geom_smooth(method = "gam", se = FALSE, color = "darkred") +
+  labs(
+    title = "Obesity vs Physical Inactivity",
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+# Scatter plot: Obesity vs Food Environment Index
+p2 <- data_2025 |>
+  ggplot(aes(x = food_index, y = obesity)) +
+  geom_point(alpha = 0.6, color = "darkgreen") +
+  geom_smooth(method = "gam", se = FALSE, color = "darkorange") +
+  labs(
+    title = "Obesity vs Food Environment Index",
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+p1 + p2
+```
+
+```{r}
+model <- lm(obesity ~ inactivity + food_index, data = data_2025)
+summary(model)
+
+```
+
+```{r}
+cor(data_2025$obesity, data_2025$inactivity, use = "complete.obs")
+cor(data_2025$obesity, data_2025$food_index, use = "complete.obs")
+cor(data_2025$inactivity, data_2025$food_index, use = "complete.obs")
+```
+
+s
+```{r}
+interaction_model <- lm(obesity ~ inactivity * food_index, data = data_2025)
+summary(interaction_model)
+```
+
+```{r}
+# # Stratify or Facet by State or Region
+# ggplot(data_2025, aes(x = inactivity, y = obesity)) +
+#   geom_point(alpha = 0.5) +
+#   geom_smooth(method = "gam", formula = y ~ s(x), se = FALSE) +
+#   facet_wrap(~ state) +
+#   theme_minimal()
+```
+
+
+
+
+
+
+
+
 
 

@@ -1,0 +1,254 @@
+---
+title: "Does physical inactivity level and access to healthy food affect obesity rate at the county level?"
+author: Helen Peng, Anvith Thumma, and Jordan Faustin
+format: 
+  revealjs:
+    theme: simple
+    slide-number: true
+    smaller: true
+editor: visual
+---
+
+## Why This Question is Important
+
+-   **Public Health Crisis:** Obesity is a major contributor to chronic diseases (diabetes, heart disease, cancer) and rising healthcare costs.
+
+-   **Disparities in Obesity:** Obesity rates vary widely by region, income, and race/ethnicity. Identifying structural barriers (like food access and inactivity) can inform equitable policies.
+
+-   **Rise in Weight Loss Drugs:** The emergence of GLP‑1 drugs like Ozempic and Wegovy has transformed obesity treatment, making it critical to understand baseline disparities in food access and physical inactivity to identify who stands to benefit most—and who may be left behind.
+
+## Data Overview
+
+-   Observations: Data at the county level across all 50 U.S. states in 202
+
+-   Variables of Interest:
+
+    -   \% Adults with Obesity
+
+    -   \% Physically Inactive
+
+    -   Food Environment Index (1-10) - Higher is Better
+
+    -   State and County Identifiers
+
+```{r setup}
+library(knitr)
+opts_chunk$set(cache=TRUE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE, fig.align="center",
+               echo=FALSE, tidy=TRUE)
+```
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel(
+  "C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", 
+  sheet = "Additional Measure Data", 
+  skip = 1
+)
+
+data_2025 <- data_2025 |> 
+  select(FIPS, State, County, Population, 
+         `% Rural`,
+         `Median Household Income`,
+         `Days above 90F`,
+         `% with access to parks`,
+         `Traffic Volume`,
+         `% Physically Inactive`,
+         `% Adults with Obesity`
+  ) |> 
+  janitor::clean_names()
+
+food_index_2025 <- read_excel(
+  "C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", 
+  sheet = "Select Measure Data", 
+  skip = 1
+)
+
+food_index_2025 <- food_index_2025 |> 
+  select(FIPS, 
+         `% Unemployed`,
+         `% Completed High School`,
+         `% Some College`,
+         `Food Environment Index`
+  ) |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips")
+rm(food_index_2025)
+```
+
+```{r missing_data}
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+missing_data <- data_2025 |> 
+ filter((is.na(percent_adults_with_obesity) |
+          is.na(percent_physically_inactive) |
+          is.na(food_environment_index)) &
+         !is.na(fips) &
+         !(fips %in% old_ct_fips)) |> 
+  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
+
+# for the counties with missing food-environment index we replaced it with the statewide avg. Note that Connecticut is the main reason why we decided to do this instead of a complete case analysis. We only have a statewide food environment index for CT, if we did a complete case analysis we would have to remove the entirety of CT from our analysis. 
+
+# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index
+    )
+  ) |> 
+  select(-statewide_food_environment_index) |> 
+  filter(!is.na(county))
+```
+
+## Obesity rates increases as physical inactivity increases and better access to food decreases
+
+```{r scatterplot}
+# ask Jordan to insert his scatterplot
+```
+
+## Overall the east coast has higher obesity rate than the west coast
+
+```{r obesity_map}
+library(tigris)
+library(leaflet)
+library(sf)
+
+options(tigris_use_cache = TRUE)
+
+counties_sf <- counties(cb = TRUE, resolution = "5m", class = "sf") |>
+  mutate(fips = paste0(STATEFP, COUNTYFP))
+
+county_data <- counties_sf |> 
+  left_join(data_2025, by = "fips") |>
+  filter(!is.na(percent_adults_with_obesity))
+
+county_data <- rmapshaper::ms_simplify(county_data, keep = 0.05)
+
+q_brks <- quantile(county_data$percent_adults_with_obesity, probs = seq(0, 1, length.out = 6), na.rm = TRUE)
+
+pal <- colorBin(
+  palette = "YlOrRd",
+  bins = q_brks,
+  na.color = "transparent"
+)
+
+leaflet(county_data) |> 
+  addProviderTiles("CartoDB.Positron") |> 
+  addPolygons(
+    fillColor = ~pal(percent_adults_with_obesity),
+    color = "black",
+    weight = 0.3,
+    fillOpacity = 0.8,
+    label = ~paste0(
+      NAME, ", ", STATE_NAME, ": ", 
+      ifelse(is.na(cluster), "No data", paste0(round(percent_adults_with_obesity, 1), "%"))
+    ),
+    highlightOptions = highlightOptions(
+      weight = 1,
+      color = "#666",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    )
+  ) |> 
+  addLegend(
+    pal = pal,
+    values = ~percent_adults_with_obesity,
+    title = "Obesity Rate (%)",
+    position = "bottomright"
+  )
+
+```
+
+## Hierarchical clustering reveals four distinct groups
+
+```{r dendro, include = FALSE}
+library(ggdendro)
+
+cluster_data <- data_2025 |>
+  select(fips,
+         state,
+         county,
+         percent_adults_with_obesity,
+         percent_physically_inactive,
+         food_environment_index) |> 
+  drop_na()
+
+std_data_features <- cluster_data |> 
+  select(percent_adults_with_obesity, percent_physically_inactive, food_environment_index) |> 
+  scale()
+
+county_dist <- dist(std_data_features, method = "euclidean")
+hc_complete <- hclust(county_dist, method = "complete")
+
+ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FALSE) +    labs(title = "Complete Linkage", y = "Dissimilarity") +
+  theme_minimal() +
+  theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      plot.title = element_text(size = 12, face = "bold"),
+      panel.grid = element_blank()
+  )
+```
+
+```{r cluster_map}
+
+options(tigris_use_cache = TRUE)
+
+data_with_clusters <- cluster_data |> 
+  mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
+
+county_clusters <- counties_sf |> 
+  left_join(data_with_clusters, by = "fips")
+
+county_clusters <- rmapshaper::ms_simplify(county_clusters, keep = 0.05)
+
+cluster_levels <- levels(data_with_clusters$cluster)
+pal <- colorFactor(
+  palette = ggthemes::colorblind_pal()(length(cluster_levels)),
+  domain = cluster_levels
+)
+
+leaflet(county_clusters) |> 
+  addProviderTiles("CartoDB.Positron") |> 
+  addPolygons(
+    fillColor = ~pal(cluster),
+    color = "black",
+    weight = 0.3,
+    fillOpacity = 0.8,
+    label = ~paste0(NAME, ", ", STATE_NAME, ": ", 
+                    ifelse(is.na(cluster), "No data", paste("Cluster", cluster))),
+    highlightOptions = highlightOptions(
+      weight = 1,
+      color = "#666",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    )
+  ) |> 
+  addLegend(
+    pal = pal,
+    values = ~cluster,
+    title = "Cluster",
+    position = "bottomright"
+  )
+```
+
+**Cluster 1 –** *Moderately inactive, decent food access, high obesity*
+
+**Cluster 2 –** *Very inactive, moderate food access, highest obesity*
+
+**Cluster 3 –** *Very inactive, worst food access, high obesity*
+
+**Cluster 4 –** *Most active, best food access, lowest obesity – Best Case*

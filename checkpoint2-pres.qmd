@@ -116,27 +116,7 @@ data_2025 <- data_2025 |>
 ## Obesity rates increases as physical inactivity increases and better access to food decreases
 
 ```{r scatterplot}
-library(patchwork)
-
-food_obesity_plot <- data_2025 |> 
-  filter(!is.na(food_environment_index), !is.na(percent_adults_with_obesity)) |> 
-  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
-  geom_point() +
-  labs(x = "Food Environment Index (Higher = Better Access)",
-       y = "Obesity Rate (%)") +
-  geom_smooth(method = "lm")
-
-physical_obesity_plot <- data_2025 |> 
-  filter(!is.na(percent_physically_inactive), !is.na(percent_adults_with_obesity)) |> 
-  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
-  geom_point() +
-  labs(x = "Phyiscally Inactive Rate (%)",
-       y = "Obesity Rate (%)") +
-  geom_smooth(method = "lm")
-
-combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
-  plot_annotation(title = "Food Enivronment Index and Physical Inactivity Rate vs. Obesity Rate")
-combined_scatterplots
+# ask Jordan to insert his scatterplot
 ```
 
 ## Overall the east coast has higher obesity rate than the west coast

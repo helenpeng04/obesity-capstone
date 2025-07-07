@@ -13,12 +13,14 @@ library(factoextra)
 library(usmap)
 library(patchwork)
 theme_set(theme_minimal())
+library(rpart)
+library(caret)
+library(rpart.plot)
 ```
 
 ```{r}
 data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2024_county_health_release_data_-_v1.xlsx', sheet = "Select Measure Data", skip = 1)
-```
-```{r}
+
 data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Additional Measure Data", skip = 1)
 
 food_index_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
@@ -39,23 +41,65 @@ eda_2024 <- data_2024 |>
 
 ```{r}
 food_index_2025 <- food_index_2025 |> 
-  filter(!is.na(County)) |> 
-  select(FIPS, 85) |> 
+  select(FIPS, 
+         `% Unemployed`,
+         `% Completed High School`,
+         `% Some College`,
+         `Food Environment Index`
+  ) |> 
   janitor::clean_names() 
 
+
 data_2025 <- data_2025 |> 
-  select(FIPS, State, County, 111, 147, 149, 215) |>
-  janitor::clean_names() |> 
-  filter(!is.na(county)) 
+  select(FIPS, State, County, Population, 
+         `% Rural`,
+         `Median Household Income`,
+         `Days above 90F`,
+         `% with access to parks`,
+         `Traffic Volume`,
+         `% Physically Inactive`,
+         `% Adults with Obesity`
+  ) |> 
+  janitor::clean_names() 
 
 data_2025 <- merge(data_2025, food_index_2025, by = "fips")
 rm(food_index_2025)
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+missing_data <- data_2025 |> 
+ filter((is.na(percent_adults_with_obesity) |
+          is.na(percent_physically_inactive) |
+          is.na(food_environment_index)) &
+         !is.na(fips) &
+         !(fips %in% old_ct_fips)) |> 
+  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
+
+# for the counties with missing food-environment index we replaced it with the statewide avg. Note that Connecticut is the main reason why we decided to do this instead of a complete case analysis. We only have a statewide food environment index for CT, if we did a complete case analysis we would have to remove the entirety of CT from our analysis. 
+
+# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index
+    )
+  ) |> 
+  select(-statewide_food_environment_index) |> 
+  filter(!is.na(county))
 ```
 
 ```{r}
 names(data_2025)
-```
-```{r}
+
+
 data_2025 <- data_2025 |> 
   rename(
     obesity = percent_adults_with_obesity,
@@ -150,30 +194,58 @@ p1 + p2
 ```
 
 ```{r}
-model <- lm(obesity ~ inactivity + food_index, data = data_2025)
-summary(model)
-
-```
-
-```{r}
 cor(data_2025$obesity, data_2025$inactivity, use = "complete.obs")
 cor(data_2025$obesity, data_2025$food_index, use = "complete.obs")
 cor(data_2025$inactivity, data_2025$food_index, use = "complete.obs")
-```
 
-s
-```{r}
+model <- lm(obesity ~ inactivity + food_index, data = data_2025)
+summary(model)
+
 interaction_model <- lm(obesity ~ inactivity * food_index, data = data_2025)
 summary(interaction_model)
 ```
 
 ```{r}
-# # Stratify or Facet by State or Region
-# ggplot(data_2025, aes(x = inactivity, y = obesity)) +
-#   geom_point(alpha = 0.5) +
-#   geom_smooth(method = "gam", formula = y ~ s(x), se = FALSE) +
-#   facet_wrap(~ state) +
-#   theme_minimal()
+set.seed(123)
+
+ob_tree <- train(obesity ~ inactivity + food_index,
+                 method = "rpart",
+                 data = clean_data, 
+                 tuneLength = 20,
+                 trControl = trainControl(method = "cv", number = 10))
+
+ggplot(ob_tree)
+
+ob_tree |> 
+  pluck("finalModel") |> 
+  rpart.plot()
+
+```
+```{r}
+# Reshape data for faceting
+env_plot_data <- data_2025 |>
+  select(obesity, 
+         food_index, 
+         percent_with_access_to_parks, 
+         traffic_volume, 
+         days_above_90f) |>
+  pivot_longer(
+    cols = -obesity,
+    names_to = "env_factor",
+    values_to = "value"
+  )
+
+# Create the faceted plot
+env_plot_data |>
+ggplot(aes(x = value, y = obesity)) +
+  geom_point(alpha = 0.4, color = "lightblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "darkgreen") +
+  facet_wrap(~ env_factor, scales = "free_x") +
+  labs(
+    title = "Environmental Factors and Their Relationship to Obesity",
+    x = "Environmental Factor Value",
+    y = "Percent Adults with Obesity"
+  )
 ```
 
 

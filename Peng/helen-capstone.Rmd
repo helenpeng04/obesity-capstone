@@ -21,17 +21,57 @@ data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capsto
 food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
 
 food_index_2025 <- food_index_2025 |> 
-  filter(!is.na(County)) |> 
   select(FIPS, 85) |> 
   janitor::clean_names() 
 
 data_2025 <- data_2025 |> 
   select(FIPS, State, County, 111, 147, 149, 215) |>
-  janitor::clean_names() |> 
-  filter(!is.na(county)) 
+  janitor::clean_names() 
 
 data_2025 <- merge(data_2025, food_index_2025, by = "fips")
 rm(food_index_2025)
+
+# handle missing data
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+missing_data <- data_2025 |> 
+ filter((is.na(percent_adults_with_obesity) |
+          is.na(percent_physically_inactive) |
+          is.na(food_environment_index)) &
+         !is.na(fips) &
+         !(fips %in% old_ct_fips)) |> 
+  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
+
+# for the counties with missing food-environment index we replaced it with the statewide avg
+# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index
+    )
+  ) |> 
+  select(-statewide_food_environment_index) |> 
+  filter(!is.na(county))
+
+missing_state_county <- data_2025 |> 
+  filter((is.na(percent_adults_with_obesity) |
+          is.na(percent_physically_inactive) |
+          is.na(food_environment_index)) &
+         !is.na(fips) &
+         !(fips %in% old_ct_fips)) |> 
+  mutate(state_county = paste(state, county, sep = " / ")) |> 
+  pull(state_county)
+
+missing_state_county
+# Note: CT no counties had its own food environment index but we got a statewide one
 ```
 
 # Maps
@@ -51,7 +91,7 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", regions = "
   theme(legend.position = "right")
 ```
 
-```{r dynamic_map_2024}
+```{r dynamic_tmap_2024}
 library(tigris)
 library(sf)
 library(tmap)
@@ -276,7 +316,7 @@ missing_data <- data_2025 |>
           is.na(percent_physically_inactive) |
           is.na(food_environment_index)) &
          !is.na(fips)) |> 
-  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) # note: old fips for CT are still in this set of missing data
+  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
 
 data_2025 <- data_2025 |>
   select(fips,
@@ -319,32 +359,18 @@ dendro_combined <- dendro_single + dendro_average + dendro_complete +
 dendro_combined
 ```
 
-```{r clusters_2025}
-library(factoextra)
-fviz_cluster(
-  list(data = std_data_features,
-       cluster = cutree(hc_complete, k = 4)),
-  geom = "point",
-  ellipse = FALSE
-) +
-  ggthemes::scale_color_colorblind() +
-  theme_bw()
-```
-
-```{r map_clusters_2025}
+```{r static_cluster_map_2025}
+library(usmap)
 data_with_clusters <- data_2025 |>   
   mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
 
 plot_usmap(data = data_with_clusters, values = "cluster", regions = "counties") +
   ggthemes::scale_fill_colorblind(name = "Cluster") +
   theme(legend.position = "right") 
-
 ```
 
-```{r clusters_summary_2025}
+```{r cluster_summary_2025}
 library(knitr)
-
-# Post-clustering analysis
 cluster_summary <- data_with_clusters |>
   group_by(cluster) |>
   summarize(
@@ -354,7 +380,6 @@ cluster_summary <- data_with_clusters |>
     mean_obesity_rate = mean(percent_adults_with_obesity, na.rm = TRUE),
   )
 print(cluster_summary)
-
 cluster_summary |> 
   rename(
     `Cluster` = cluster,
@@ -365,32 +390,4 @@ cluster_summary |>
   ) |> 
   kable(digits = 2, 
         caption = "Cluster Summary: Average Health and Food Metrics by Cluster")
-
 ```
-
-**Cluster 1:** Moderately inactive, decent food access, high obesity
-**Cluster 2:** Very inactive, moderate food access, highest obesity – Worst Case
-**Cluster 3:** Very inactive, worst food access, high obesity – Critical Concern
-**Cluster 4:** Most active, best food access, lowest obesity – Best Case
-
-# Modeling
-
-Note for Modeling: Response Variable is Continuous and Bounded. What models can we use to handle bounded variables? Beta regression?? Below I'm just listing all the methods we learned.
-
-## Simple Linear Regression
-
-## Ridge Regression
-
-## LASSO Regression
-
-## Elastic Net Regression
-
-## Generalized Additive Models
-
-## K-Nearest Neighbors
-
-## Splines
-
-## Random Forest Models
-
-## Gradient Boosting Models

@@ -43,11 +43,10 @@ library(readxl)
 library(tidyverse)
 theme_set(theme_bw())
 
-data_2025 <- read_excel(
-  "C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", 
-  sheet = "Additional Measure Data", 
-  skip = 1
-)
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", sheet = "Select Measure Data", skip = 1)
+
 
 data_2025 <- data_2025 |> 
   select(FIPS, State, County, Population, 
@@ -61,11 +60,6 @@ data_2025 <- data_2025 |>
   ) |> 
   janitor::clean_names()
 
-food_index_2025 <- read_excel(
-  "C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025 County Health Rankings Data - v3.xlsx", 
-  sheet = "Select Measure Data", 
-  skip = 1
-)
 
 food_index_2025 <- food_index_2025 |> 
   select(FIPS, 
@@ -93,7 +87,7 @@ missing_data <- data_2025 |>
 
 # for the counties with missing food-environment index we replaced it with the statewide avg. Note that Connecticut is the main reason why we decided to do this instead of a complete case analysis. We only have a statewide food environment index for CT, if we did a complete case analysis we would have to remove the entirety of CT from our analysis. 
 
-# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
+# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that 
 
 statewide_food_index <- data_2025 |> 
   filter(is.na(county) & !is.na(food_environment_index)) |> 
@@ -116,7 +110,34 @@ data_2025 <- data_2025 |>
 ## Obesity rates increases as physical inactivity increases and better access to food decreases
 
 ```{r scatterplot}
-# ask Jordan to insert his scatterplot
+library(patchwork)
+
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  geom_smooth(method = "gam", se = FALSE, color = "darkred") +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6, color = "darkgreen") +
+  geom_smooth(method = "gam", se = FALSE, color = "darkorange") +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
+  plot_annotation(title = "Food Enivronment Index and Physical Inactivity Rate vs. Obesity Rate")
+combined_scatterplots
+
+# cor(data_2025$percent_adults_with_obesity, data_2025$food_environment_index, use = "complete.obs")
+# cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
 ```
 
 ## Overall the east coast has higher obesity rate than the west coast
@@ -153,9 +174,7 @@ leaflet(county_data) |>
     weight = 0.3,
     fillOpacity = 0.8,
     label = ~paste0(
-      NAME, ", ", STATE_NAME, ": ", 
-      ifelse(is.na(cluster), "No data", paste0(round(percent_adults_with_obesity, 1), "%"))
-    ),
+      NAME, ", ", STATE_NAME, ": ", round(percent_adults_with_obesity, 1), "%"),
     highlightOptions = highlightOptions(
       weight = 1,
       color = "#666",
@@ -169,7 +188,6 @@ leaflet(county_data) |>
     title = "Obesity Rate (%)",
     position = "bottomright"
   )
-
 ```
 
 ## Hierarchical clustering reveals four distinct groups
@@ -204,7 +222,6 @@ ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FA
 ```
 
 ```{r cluster_map}
-
 options(tigris_use_cache = TRUE)
 
 data_with_clusters <- cluster_data |> 

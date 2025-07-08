@@ -16,6 +16,7 @@ theme_set(theme_minimal())
 library(rpart)
 library(caret)
 library(rpart.plot)
+library(corrplot)
 ```
 
 ```{r}
@@ -45,7 +46,8 @@ food_index_2025 <- food_index_2025 |>
          `% Unemployed`,
          `% Completed High School`,
          `% Some College`,
-         `Food Environment Index`
+         `Food Environment Index`,
+         `% Severe Housing Problems`
   ) |> 
   janitor::clean_names() 
 
@@ -110,56 +112,56 @@ data_2025 <- data_2025 |>
 
 
 ```{r}
-# compute average obesity rate by state
-state_avgs <- eda_2024 |>
-  group_by(State) |>
-  summarize(avg_obesity = mean(Obesity, na.rm = T)) |>
-  arrange(desc(avg_obesity))
-
-# get one lowest, one highest, and 3 random from the rest
-highest_state  <- state_avgs |> slice(1) |> pull(State)
-lowest_state <- state_avgs |> slice(n() - 1) |> pull(State)
-other_states  <- state_avgs |> filter(!(State %in% c(lowest_state, highest_state))) |>
-                   slice_sample(n = 3) |> pull(State)
-
-
-# selected states into a vector
-selected_states <- c(highest_state, lowest_state, other_states)
-
-# Filter states
-eda_2024_filtered <- eda_2024 |> 
-  filter(State %in% selected_states)
-
-# Plot 
-eda_2024_filtered |>
-  ggplot(aes(x = Population, y = Obesity, color = State)) +
-  geom_jitter(alpha = 0.7, width = 0.1, height = 0.5, size = 2) +
-  geom_hline(data = state_avgs |> 
-               filter(State %in% selected_states),
-             aes(yintercept = avg_obesity, color = State),
-             linetype = "dashed", linewidth = 1) +
-  scale_x_log10() +
-  labs(title = "% Adults with Obesity by County (2024) - Selected States",
-       x = "Population (log scale)",
-       y = "% Adults with Obesity",
-       color = "State")
+# # compute average obesity rate by state
+# state_avgs <- eda_2024 |>
+#   group_by(State) |>
+#   summarize(avg_obesity = mean(Obesity, na.rm = T)) |>
+#   arrange(desc(avg_obesity))
+# 
+# # get one lowest, one highest, and 3 random from the rest
+# highest_state  <- state_avgs |> slice(1) |> pull(State)
+# lowest_state <- state_avgs |> slice(n() - 1) |> pull(State)
+# other_states  <- state_avgs |> filter(!(State %in% c(lowest_state, highest_state))) |>
+#                    slice_sample(n = 3) |> pull(State)
+# 
+# 
+# # selected states into a vector
+# selected_states <- c(highest_state, lowest_state, other_states)
+# 
+# # Filter states
+# eda_2024_filtered <- eda_2024 |> 
+#   filter(State %in% selected_states)
+# 
+# # Plot 
+# eda_2024_filtered |>
+#   ggplot(aes(x = Population, y = Obesity, color = State)) +
+#   geom_jitter(alpha = 0.7, width = 0.1, height = 0.5, size = 2) +
+#   geom_hline(data = state_avgs |> 
+#                filter(State %in% selected_states),
+#              aes(yintercept = avg_obesity, color = State),
+#              linetype = "dashed", linewidth = 1) +
+#   scale_x_log10() +
+#   labs(title = "% Adults with Obesity by County (2024) - Selected States",
+#        x = "Population (log scale)",
+#        y = "% Adults with Obesity",
+#        color = "State")
 ```
 
 ```{r}
-# Select and scale the variables
-cluster_data <- eda_2024 |>
-  select(Obesity, Inactivity, FoodAccess) |>
-  na.omit() |>
-  scale()
-
-
-set.seed(42)
-km <- kmeans(cluster_data, centers = 4, nstart = 25)
-
-# Visualize clusters
-fviz_cluster(km, data = cluster_data,
-             geom = "point",
-             main = "Clusters of Counties by Obesity, Inactivity, and Food Access")
+# # Select and scale the variables
+# cluster_data <- eda_2024 |>
+#   select(Obesity, Inactivity, FoodAccess) |>
+#   na.omit() |>
+#   scale()
+# 
+# 
+# set.seed(42)
+# km <- kmeans(cluster_data, centers = 4, nstart = 25)
+# 
+# # Visualize clusters
+# fviz_cluster(km, data = cluster_data,
+#              geom = "point",
+#              main = "Clusters of Counties by Obesity, Inactivity, and Food Access")
 
 ```
 
@@ -187,9 +189,10 @@ p2 <- data_2025 |>
     y = "% Adults with Obesity"
   ) +
   theme_minimal()
-```
 
-```{r}
+
+
+
 p1 + p2
 ```
 
@@ -197,31 +200,56 @@ p1 + p2
 cor(data_2025$obesity, data_2025$inactivity, use = "complete.obs")
 cor(data_2025$obesity, data_2025$food_index, use = "complete.obs")
 cor(data_2025$inactivity, data_2025$food_index, use = "complete.obs")
-
-model <- lm(obesity ~ inactivity + food_index, data = data_2025)
-summary(model)
-
-interaction_model <- lm(obesity ~ inactivity * food_index, data = data_2025)
-summary(interaction_model)
 ```
 
 ```{r}
-set.seed(123)
+numeric_data <- data_2025 |>
+  select(where(is.numeric)) |>
+  na.omit()
 
-ob_tree <- train(obesity ~ inactivity + food_index,
-                 method = "rpart",
-                 data = clean_data, 
-                 tuneLength = 20,
-                 trControl = trainControl(method = "cv", number = 10))
 
-ggplot(ob_tree)
+cor_matrix <- cor(numeric_data, method = "pearson")
 
-ob_tree |> 
-  pluck("finalModel") |> 
-  rpart.plot()
+
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         tl.cex = 0.6, 
+         addCoef.col = "black", 
+         number.cex = 0.5,
+         title = "Correlation Matrix of County-Level Variables",
+         mar = c(0, 0, 1, 0))
+
 
 ```
+
 ```{r}
+# clean_data <- data_2025 |>
+#   drop_na()
+# 
+# set.seed(123)
+# 
+# ob_tree <- train(obesity ~ inactivity + food_index,
+#                  method = "rpart",
+#                  data = clean_data, 
+#                  tuneLength = 20,
+#                  trControl = trainControl(method = "cv", number = 10))
+# 
+# ggplot(ob_tree)
+# 
+# ob_tree |> 
+#   pluck("finalModel") |> 
+#   rpart.plot()
+```
+
+
+
+```{r}
+
+
+# plots of obesity based on various environmental factors
+
+
 # Reshape data for faceting
 env_plot_data <- data_2025 |>
   select(obesity, 
@@ -238,8 +266,8 @@ env_plot_data <- data_2025 |>
 # Create the faceted plot
 env_plot_data |>
 ggplot(aes(x = value, y = obesity)) +
-  geom_point(alpha = 0.4, color = "lightblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "darkgreen") +
+  geom_point(alpha = 0.4, color = "blue") +
+  geom_smooth(method = "gam", se = FALSE, color = "green") +
   facet_wrap(~ env_factor, scales = "free_x") +
   labs(
     title = "Environmental Factors and Their Relationship to Obesity",
@@ -249,8 +277,43 @@ ggplot(aes(x = value, y = obesity)) +
 ```
 
 
+```{r}
 
 
+# Obesity based on top 3 correlated features to inactivity
+
+
+# Reshape data for faceting
+top_three_plot_data <- data_2025 |>
+  select(inactivity, 
+         percent_completed_high_school, 
+         percent_some_college, 
+         median_household_income) |>
+  pivot_longer(
+    cols = -inactivity,
+    names_to = "top_three_factor",
+    values_to = "value"
+  )
+
+# Create the faceted plot
+top_three_plot_data |>
+ggplot(aes(x = value, y = inactivity)) +
+  geom_point(alpha = 0.4, color = "blue") +
+  geom_smooth(method = "gam", se = FALSE, color = "green") +
+  facet_wrap(~ top_three_factor, scales = "free_x") +
+  labs(
+    title = "Top 3 highly correlated Factors and Their Relationship to Inactivity",
+    y = "Percent Adults with Inactivity"
+  )
+```
+
+
+```{r}
+data_2025 |>
+  ggplot(aes(median_household_income, food_index)) +
+  geom_point(alpha)
+  
+```
 
 
 

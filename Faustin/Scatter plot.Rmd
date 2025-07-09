@@ -30,48 +30,8 @@ table(data_2024$Unreliable...4)
 You can also embed plots, for example:
 
 ```{r}
-library(patchwork)  # For combining plots
-
-# PHYSICAL INACTIVITY ANALYSIS
-state_inactivity <- data_2024 |> 
-  select(State, County, `% Physically Inactive`) |> 
-  filter(!is.na(State), !is.na(`% Physically Inactive`)) |> 
-  group_by(State) |> 
-  summarize(inactivity_rate = mean(`% Physically Inactive`, na.rm = TRUE)) |> 
-  rename(state = State) |> 
-  arrange(inactivity_rate)
-
-# Physical Inactivity Map
-inactivity_map <- plot_usmap(data = state_inactivity, values = "inactivity_rate", regions = "states") +
-  scale_fill_continuous(
-    low = "lightblue", high = "navy",
-    name = "Inactivity Rate (%)",
-    limits = c(15, 35)  # Adjust based on your data range
-  ) +
-  labs(title = "Physical Inactivity Rates by State (2024)") +
-  theme(legend.position = "right")
-
-# FOOD ENVIRONMENT INDEX ANALYSIS
-state_food <- data_2024 |> 
-  select(State, County, `Food Environment Index`) |> 
-  filter(!is.na(State), !is.na(`Food Environment Index`)) |> 
-  group_by(State) |> 
-  summarize(food_index = mean(`Food Environment Index`, na.rm = TRUE)) |> 
-  rename(state = State) |> 
-  arrange(food_index)
-
-# Food Environment Index Map (higher values = better food access)
-food_map <- plot_usmap(data = state_food, values = "food_index", regions = "states") +
-  scale_fill_continuous(
-    low = "darkred", high = "darkgreen",
-    name = "Food Index Score",
-    limits = c(3, 9)  # Typical range for Food Environment Index
-  ) +
-  labs(title = "Food Environment Index by State (2024)") +
-  theme(legend.position = "right")
-
-# Display maps side by side
-inactivity_map + food_map
+library(ggplot2)
+library(patchwork)
 
 # COUNTY-LEVEL SCATTERPLOTS (Relationship with Obesity)
 county_data <- data_2024 |> 
@@ -82,22 +42,28 @@ county_data <- data_2024 |>
   filter(!is.na(obesity), !is.na(inactivity), !is.na(food_index))
 
 # Inactivity vs Obesity
-ggplot(county_data, aes(x = inactivity, y = obesity)) +
+inactivity_plot <- ggplot(county_data, aes(x = inactivity, y = obesity)) +
   geom_point(alpha = 0.3, color = "blue") +
   geom_smooth(method = "lm", color = "navy") +
-  labs(title = "County-Level: Physical Inactivity vs Obesity",
+  labs(title = "Physical Inactivity vs Obesity",
        x = "Physical Inactivity Rate (%)",
        y = "Obesity Rate (%)") +
   theme_minimal()
 
 # Food Index vs Obesity (note: lower index = worse food access)
-ggplot(county_data, aes(x = food_index, y = obesity)) +
+food_plot <- ggplot(county_data, aes(x = food_index, y = obesity)) +
   geom_point(alpha = 0.3, color = "darkgreen") +
   geom_smooth(method = "lm", color = "red") +
-  labs(title = "County-Level: Food Environment vs Obesity",
+  labs(title = "Food Environment vs Obesity",
        x = "Food Environment Index (Higher = Better Access)",
        y = "Obesity Rate (%)") +
   theme_minimal()
+
+# Combine just the scatterplots
+combined_scatterplots <- inactivity_plot + food_plot
+
+# Display the combined plot
+combined_scatterplots
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

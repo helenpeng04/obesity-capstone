@@ -49,17 +49,15 @@ food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-
 
 
 data_2025 <- data_2025 |> 
-  select(FIPS, State, County, Population, 
-         `% Rural`,
+  select(FIPS, State, County,
          `Median Household Income`,
          `Days above 90F`,
          `% with access to parks`,
-         `Traffic Volume`,
          `% Physically Inactive`,
          `% Adults with Obesity`
   ) |> 
-  janitor::clean_names()
-
+  janitor::clean_names() 
+# add severe housing problem
 
 food_index_2025 <- food_index_2025 |> 
   select(FIPS, 
@@ -136,9 +134,11 @@ combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
   plot_annotation(title = "Food Enivronment Index and Physical Inactivity Rate vs. Obesity Rate")
 combined_scatterplots
 
-# cor(data_2025$percent_adults_with_obesity, data_2025$food_environment_index, use = "complete.obs")
-# cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
+cor(data_2025$percent_adults_with_obesity, data_2025$food_environment_index, use = "complete.obs")
+cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
 ```
+
+Physical Inactivity has a stronger correlation than food access and so we recommend focusing on improving a county's physical inactivity rate.
 
 ## Overall the east coast has higher obesity rate than the west coast
 
@@ -269,3 +269,97 @@ leaflet(county_clusters) |>
 **Cluster 3 –** *Very inactive, worst food access, high obesity*
 
 **Cluster 4 –** *Most active, best food access, lowest obesity – Best Case*
+
+```{r}
+library(knitr)
+
+data_2025 <- data_2025 |> 
+  left_join(data_with_clusters |> select(fips, cluster), by = "fips")
+
+# cluster_summary <- data_2025 |>
+#   filter(!is.na(cluster)) |>  
+#   group_by(cluster) |>
+#   summarize(
+#     n_counties = n(),
+#     mean_physically_inactive = mean(percent_physically_inactive, na.rm = TRUE),
+#     mean_food_index = mean(food_environment_index, na.rm = TRUE),
+#     mean_obesity_rate = mean(percent_adults_with_obesity, na.rm = TRUE),
+#     mean_rural = mean(percent_rural, na.rm = TRUE),
+#     mean_household_income = mean(median_household_income, na.rm = TRUE),
+#     mean_days_above_90f = mean(days_above_90f, na.rm = TRUE),
+#     mean_traffic_volume = mean(traffic_volume, na.rm = TRUE),
+#     mean_access_to_parks = mean(percent_with_access_to_parks, na.rm = TRUE),
+#     mean_unemployment = mean(percent_unemployed, na.rm = TRUE)
+#   )
+# 
+# cluster_summary |> 
+#   rename(
+#     `Cluster` = cluster,
+#     `Number of Counties` = n_counties,
+#     `Physically Inactive (%)` = mean_physically_inactive,
+#     `Food Environment Index` = mean_food_index,
+#     `Obesity Rate (%)` = mean_obesity_rate,
+#     `Household Income` = mean_household_income,
+#     `% Rural` = mean_rural,
+#     `Mean Days Above 90F` = mean_days_above_90f,
+#     `Mean Traffic Volume` = mean_traffic_volume,
+#     `Access to Parks (%)` = mean_access_to_parks,
+#     `Unemployment Rate (%)` = mean_unemployment
+#   ) |> 
+#   kable(digits = 2)
+
+data_2025_long <- data_2025 |> 
+  filter(!is.na(cluster)) |> 
+  rename(`Household Income` = median_household_income,
+         `Days Above 90F` = days_above_90f,
+         `Access to Parks (%)` = percent_with_access_to_parks,
+         `Physically Inactive (%)` = percent_physically_inactive,
+         `Obesity Rate (%)` = percent_adults_with_obesity,
+         `Unemployment Rate (%)` = percent_unemployed,
+         `Completed High School (%)` = percent_completed_high_school,
+         `Completed Some College (%)` = percent_some_college,
+         `Food Environment Index` = food_environment_index
+         )|> 
+  pivot_longer(
+    cols = -c(fips, state, county, cluster),
+    names_to = "variable", 
+    values_to = "value"
+  ) 
+
+data_2025_long |> ggplot(aes(x= factor(cluster), y = value, fill = factor(cluster))) +
+  geom_boxplot() +
+  labs(
+    x = "Cluster",
+    y = "Value",
+  ) +
+  facet_wrap(~variable, scales = "free_y") +
+  theme_bw(base_size = 8) +
+  theme(
+    strip.background = element_blank(),     
+    legend.position = "none"                    
+  )  |> 
+  ggthemes::scale_fill_colorblind()
+
+```
+
+ remove population, and severe housing, percent rural, traffic volume
+
+Recommendations based on clusters
+
+improve access to parks in cluster 1+2
+
+in cluster 3 there are numerous days that are extremely hot so adding parks won't do much, instead build gyms
+
+## Recommendations
+
+
+## Plan of Action
+
+Completed:
+
+-   Create a map to see geographic data of obesity rates
+
+-   Create scatter plots to see the correlation between obesity, food access, and physical inactivity
+
+-   Clustering analysis and compare each cluster profiles
+

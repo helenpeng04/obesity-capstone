@@ -311,7 +311,11 @@ ggplot(aes(x = value, y = inactivity)) +
 ```{r}
 data_2025 |>
   ggplot(aes(median_household_income, food_index)) +
-  geom_point(alpha)
+  geom_point(alpha = 0.4, color = 'blue') +
+  geom_smooth(method = "gam", se = F, color = "green") + 
+  labs(title = "Median Household Income Vs. Food Index Score", 
+       x = "Income",
+       y = "Food Index")
   
 ```
 

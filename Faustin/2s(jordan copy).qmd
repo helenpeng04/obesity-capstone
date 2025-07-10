@@ -120,17 +120,17 @@ library(ggplot2)
 library(patchwork)
 
 # COUNTY-LEVEL SCATTERPLOTS (Relationship with Obesity)
-county_data <- data_2024 |> 
-  select(State, County, 
-         obesity = `% Adults with Obesity`,
-         inactivity = `% Physically Inactive`,
-         food_index = `Food Environment Index`) |> 
+county_data <- data_2025 |> 
+  select(state, county, 
+         obesity = `percent_adults_with_obesity`,
+         inactivity = `percent_physically_inactive`,
+         food_index = `food_environment_index`) |> 
   filter(!is.na(obesity), !is.na(inactivity), !is.na(food_index))
 
 # Inactivity vs Obesity
 inactivity_plot <- ggplot(county_data, aes(x = inactivity, y = obesity)) +
   geom_point(alpha = 0.3, color = "blue") +
-  geom_smooth(method = "lm", color = "navy") +
+  geom_smooth(method = "gam", color = "navy") +
   labs(title = "Physical Inactivity vs Obesity",
        x = "Physical Inactivity Rate (%)",
        y = "Obesity Rate (%)") +
@@ -139,7 +139,7 @@ inactivity_plot <- ggplot(county_data, aes(x = inactivity, y = obesity)) +
 # Food Index vs Obesity (note: lower index = worse food access)
 food_plot <- ggplot(county_data, aes(x = food_index, y = obesity)) +
   geom_point(alpha = 0.3, color = "darkgreen") +
-  geom_smooth(method = "lm", color = "red") +
+  geom_smooth(method = "gam", color = "red") +
   labs(title = "Food Environment vs Obesity",
        x = "Food Environment Index (Higher = Better Access)",
        y = "Obesity Rate (%)") +

@@ -391,3 +391,5 @@ cluster_summary |>
   kable(digits = 2, 
         caption = "Cluster Summary: Average Health and Food Metrics by Cluster")
 ```
+
+Started working in Checkpoint 2 quarto representation...

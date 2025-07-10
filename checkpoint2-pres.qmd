@@ -78,13 +78,6 @@ data_2025 <- merge(data_2025, food_index_2025, by = "fips")
 ```{r missing_data}
 
 old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
-missing_data <- data_2025 |> 
- filter((is.na(percent_adults_with_obesity) |
-          is.na(percent_physically_inactive) |
-          is.na(food_environment_index)) &
-         !is.na(fips) &
-         !(fips %in% old_ct_fips)) |> 
-  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
 
 statewide_food_index <- data_2025 |> 
   filter(is.na(county) & !is.na(food_environment_index)) |> 
@@ -92,6 +85,7 @@ statewide_food_index <- data_2025 |>
   rename(statewide_food_environment_index = food_environment_index)
 
 data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
   left_join(statewide_food_index, by = "state") |> 
   mutate(
     food_environment_index = if_else(
@@ -101,32 +95,8 @@ data_2025 <- data_2025 |>
     )
   ) |> 
   select(-statewide_food_environment_index) |> 
-  filter(!is.na(county))
-
-statewide_physical_inactivity <- data_2025 |>
-  filter(is.na(county) & !is.na(percent_physically_inactive)) |>
-  select(state, percent_physically_inactive) |>
-  rename(statewide_physical_inactivity = percent_physically_inactive)
-
-data_2025 <- data_2025 |> 
-  left_join(statewide_physical_inactivity, by = "state") |> 
-  mutate(
-    percent_physically_inactive = if_else(
-      is.na(percent_physically_inactive) & !is.na(county),
-      statewide_physical_inactivity,
-      percent_physically_inactive
-    )
-  ) |> 
-  select(-statewide_physical_inactivity) |> 
-  filter(!is.na(county))
-
-updated_missing_data <- data_2025 |> 
- filter((is.na(percent_adults_with_obesity) |
-          is.na(percent_physically_inactive) |
-          is.na(food_environment_index)) &
-         !is.na(fips) &
-         !(fips %in% old_ct_fips)) |> 
-  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
+  filter(!is.na(county)) |> 
+  filter(!is.na(percent_adults_with_obesity))
 ```
 
 ## Obesity rates increases as physical inactivity increases and better access to food decreases
@@ -384,3 +354,32 @@ Next Steps:
 
 -   Conduct beta regression and decision tree analysis to model obesity-related outcomes
 -   Continue drafting the final report and designing the project poster
+
+```{r include = FALSE}
+library(betareg)
+
+data_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100
+    # inactivity_prop = percent_physically_inactive /100 do i also need to do this
+  )
+
+beta_model <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
+summary(beta_model)
+
+# colSums(is.na(data_2025))
+
+data_2025$predicted_obesity <- predict(beta_model, type = "response")
+
+ggplot(data_2025, aes(x = obesity_prop, y = predicted_obesity)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(
+    x = "Observed Obesity Proportion",
+    y = "Predicted Obesity Proportion",
+    title = "Actual vs Predicted Obesity Proportions"
+  ) +
+  theme_minimal()
+
+# i guess make MSE??? idk beta regression confuses me yo
+```

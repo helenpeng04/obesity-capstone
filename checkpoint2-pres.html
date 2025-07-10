@@ -174,16 +174,26 @@ Helen Peng, Anvith Thumma, and Jordan Faustin
 <h2>Data Overview</h2>
 <ul>
 <li><p>Observations: Data at the county level across all 50 U.S. states in 202</p></li>
-<li><p>Variables of Interest: [fill out]</p></li>
-<li><p>Handling Missing Data: [fill out]</p></li>
+<li><p>Variables of Interest:</p>
+<ul>
+<li><p>% Adults with Obesity</p></li>
+<li><p>% Physically Inactive</p></li>
+<li><p>Food Environment Index (1-10) - Higher is Better</p></li>
+<li><p>State and County Identifiers</p></li>
+</ul></li>
+<li><p>Handling Missing Data</p>
+<ul>
+<li><p>If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.</p></li>
+<li><p>Two counties that did not have data for obesity rate, our response variables and so, we had to drop those counties.</p></li>
+</ul></li>
 </ul>
 </section>
 <section id="obesity-rates-increases-as-physical-inactivity-increases-and-better-access-to-food-decreases" class="slide level2">
 <h2>Obesity rates increases as physical inactivity increases and better access to food decreases</h2>
 
 <img data-src="checkpoint2-pres_files/figure-revealjs/scatterplot-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"></section>
-<section id="usa-obesity-map" class="slide level2">
-<h2>USA Obesity map</h2>
+<section id="east-coast-has-higher-obesity-rate-than-the-west-coast" class="slide level2">
+<h2>East coast has higher obesity rate than the west coast</h2>
 <div class="cell" data-layout-align="center">
 <div class="cell-output-display">
 <div class="leaflet html-widget html-fill-item" id="htmlwidget-0f2413324762afb9686a" style="width:960px;height:480px;"></div>
@@ -203,27 +213,28 @@ Helen Peng, Anvith Thumma, and Jordan Faustin
 <section id="cluster-profiles" class="slide level2">
 <h2>Cluster Profiles</h2>
 
-<img data-src="checkpoint2-pres_files/figure-revealjs/cluster_profile-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"><p><strong>Cluster 1 –</strong> <em>Moderately inactive, decent food access, high obesity</em></p>
-<p><strong>Cluster 2 –</strong> <em>Very inactive, moderate food access, highest obesity</em></p>
-<p><strong>Cluster 3 –</strong> <em>Very inactive, worst food access, high obesity</em></p>
-<p><strong>Cluster 4 –</strong> <em>Most active, best food access, lowest obesity – Best Case</em></p>
+<img data-src="checkpoint2-pres_files/figure-revealjs/cluster_profile-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"><p><strong>Cluster 1 –</strong> Moderately inactive, decent food access, high obesity</p>
+<p><strong>Cluster 2 –</strong> Very inactive, moderate food access, highest obesity</p>
+<p><strong>Cluster 3 –</strong> Very inactive, worst food access, high obesity</p>
+<p><strong>Cluster 4 –</strong> Most active, best food access, lowest obesity – Best Case</p>
 </section>
 <section id="recommendations-based-on-clusters" class="slide level2">
 <h2>Recommendations Based On clusters</h2>
 <p>improve access to parks in cluster 1+2</p>
-<p>in cluster 3 there are numerous days that are extremely hot so adding parks won’t do much, instead build gyms</p>
+<p>in cluster 3 there are numerous days that are extremely hot so adding parks won’t do much, instead we could build gyms</p>
 </section>
 <section id="plan-of-action" class="slide level2">
 <h2>Plan of Action</h2>
 <p>Completed:</p>
 <ul>
-<li><p>Create a map to see geographic data of obesity rates</p></li>
-<li><p>Create scatter plots to see the correlation between obesity, food access, and physical inactivity</p></li>
-<li><p>Clustering analysis and compare each cluster profiles</p></li>
+<li><p>Created a map to visualize geographic patterns in obesity rates</p></li>
+<li><p>Generated scatter plots to explore relationships between obesity, food access, and physical inactivity</p></li>
+<li><p>Performed clustering analysis and compared profiles across clusters</p></li>
 </ul>
 <p>Next Steps:</p>
 <ul>
-<li>Beta regression and decision trees</li>
+<li>Conduct beta regression and decision tree analysis to model obesity-related outcomes</li>
+<li>Continue drafting the final report and designing the project poster</li>
 </ul>
 
 </section>

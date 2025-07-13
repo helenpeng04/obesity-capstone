@@ -20,11 +20,11 @@ library(corrplot)
 ```
 
 ```{r}
-data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2024_county_health_release_data_-_v1.xlsx', sheet = "Select Measure Data", skip = 1)
+data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2024_CHRD.xlsx', sheet = "Select Measure Data", skip = 1)
 
-data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Additional Measure Data", skip = 1)
+data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2025_CHRD.xlsx', sheet = "Additional Measure Data", skip = 1)
 
-food_index_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/Thumma/2025 County Health Rankings Data - v3.xlsx', sheet = "Select Measure Data", skip = 1)
+food_index_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2025_CHRD.xlsx', sheet = "Select Measure Data", skip = 1)
 
 ```
 

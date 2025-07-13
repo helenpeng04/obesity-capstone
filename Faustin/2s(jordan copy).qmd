@@ -15,21 +15,15 @@ editor: visual
 
 -   **Disparities in Obesity:** Obesity rates vary widely by region, income, and race/ethnicity. Identifying structural barriers (like food access and inactivity) can inform equitable policies.
 
--   **Rise in Weight Loss Drugs:** The emergence of GLP‑1 drugs like Ozempic and Wegovy has transformed obesity treatment, making it critical to understand baseline disparities in food access and physical inactivity to identify who stands to benefit most—and who may be left behind.
+-   **Rise in Weight Loss Drugs:** The increasing popularity of weight loss drugs (GLP-1 agonist) are creating opportunities and challenges. While effective for some, patients, these drugs are expensive, have side effects, and don't address the root cause of obesity. Understanding the environmental drivers helps identify where interventions are truly needed,
 
 ## Data Overview
 
 -   Observations: Data at the county level across all 50 U.S. states in 202
 
--   Variables of Interest:
+-   Variables of Interest: "Percentage of Adults with Obesity" with the Primary predictors being "Percentage of Physically Inactive" and "Food Environment Index". A few Socioeconomic factors that will be looked into "Median Household Income", "Percentage of Unemployed", as well as "Education Status". All this data will be categorized using geographic identifiers such as "FIPS codes", "State", and "County".
 
-    -   \% Adults with Obesity
-
-    -   \% Physically Inactive
-
-    -   Food Environment Index (1-10) - Higher is Better
-
-    -   State and County Identifiers
+-   Handling Missing Data: Connecticut reports their finding, not by county but, by state/region wide averages. So we adjusted our data to correctly reflect/represent that. We also removed counties with missing rates and data (with the exception of CT as noted). We also used a complete-case analysis for clustering.
 
 ```{r setup}
 library(knitr)
@@ -43,29 +37,19 @@ library(readxl)
 library(tidyverse)
 theme_set(theme_bw())
 
-data_2025 <- read_excel(
-  "C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", 
-  sheet = "Additional Measure Data", 
-  skip = 1
-)
+data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
 
 data_2025 <- data_2025 |> 
-  select(FIPS, State, County, Population, 
-         `% Rural`,
+  select(FIPS, State, County,
          `Median Household Income`,
          `Days above 90F`,
          `% with access to parks`,
-         `Traffic Volume`,
          `% Physically Inactive`,
          `% Adults with Obesity`
   ) |> 
-  janitor::clean_names()
-
-food_index_2025 <- read_excel(
-  "C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", 
-  sheet = "Select Measure Data", 
-  skip = 1
-)
+  janitor::clean_names() 
 
 food_index_2025 <- food_index_2025 |> 
   select(FIPS, 
@@ -93,7 +77,7 @@ missing_data <- data_2025 |>
 
 # for the counties with missing food-environment index we replaced it with the statewide avg. Note that Connecticut is the main reason why we decided to do this instead of a complete case analysis. We only have a statewide food environment index for CT, if we did a complete case analysis we would have to remove the entirety of CT from our analysis. 
 
-# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
+# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that 
 
 statewide_food_index <- data_2025 |> 
   filter(is.na(county) & !is.na(food_environment_index)) |> 
@@ -116,43 +100,39 @@ data_2025 <- data_2025 |>
 ## Obesity rates increases as physical inactivity increases and better access to food decreases
 
 ```{r scatterplot}
-library(ggplot2)
+# Physical Inactivity has a stronger correlation than food access and so we recommend focusing on improving a county's physical inactivity rate.
 library(patchwork)
 
-# COUNTY-LEVEL SCATTERPLOTS (Relationship with Obesity)
-county_data <- data_2025 |> 
-  select(state, county, 
-         obesity = `percent_adults_with_obesity`,
-         inactivity = `percent_physically_inactive`,
-         food_index = `food_environment_index`) |> 
-  filter(!is.na(obesity), !is.na(inactivity), !is.na(food_index))
-
-# Inactivity vs Obesity
-inactivity_plot <- ggplot(county_data, aes(x = inactivity, y = obesity)) +
-  geom_point(alpha = 0.3, color = "blue") +
-  geom_smooth(method = "gam", color = "navy") +
-  labs(title = "Physical Inactivity vs Obesity",
-       x = "Physical Inactivity Rate (%)",
-       y = "Obesity Rate (%)") +
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  geom_smooth(method = "gam", se = FALSE, color = "darkred") +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) +
   theme_minimal()
 
-# Food Index vs Obesity (note: lower index = worse food access)
-food_plot <- ggplot(county_data, aes(x = food_index, y = obesity)) +
-  geom_point(alpha = 0.3, color = "darkgreen") +
-  geom_smooth(method = "gam", color = "red") +
-  labs(title = "Food Environment vs Obesity",
-       x = "Food Environment Index (Higher = Better Access)",
-       y = "Obesity Rate (%)") +
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6, color = "darkgreen") +
+  geom_smooth(method = "gam", se = FALSE, color = "darkorange") +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) +
   theme_minimal()
 
-# Combine just the scatterplots
-combined_scatterplots <- inactivity_plot + food_plot
-
-# Display the combined plot
+combined_scatterplots <- food_obesity_plot + physical_obesity_plot +
+  plot_annotation(title = "Food Enivronment Index and Physical Inactivity Rate vs. Obesity Rate")
 combined_scatterplots
+
+# cor(data_2025$percent_adults_with_obesity, data_2025$food_environment_index, use = "complete.obs")
+# cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
+
 ```
 
-## Overall the east coast has higher obesity rate than the west coast
+## USA Obesity map
 
 ```{r obesity_map}
 library(tigris)
@@ -186,9 +166,7 @@ leaflet(county_data) |>
     weight = 0.3,
     fillOpacity = 0.8,
     label = ~paste0(
-      NAME, ", ", STATE_NAME, ": ", 
-      ifelse(is.na(cluster), "No data", paste0(round(percent_adults_with_obesity, 1), "%"))
-    ),
+      NAME, ", ", STATE_NAME, ": ", round(percent_adults_with_obesity, 1), "%"),
     highlightOptions = highlightOptions(
       weight = 1,
       color = "#666",
@@ -202,7 +180,6 @@ leaflet(county_data) |>
     title = "Obesity Rate (%)",
     position = "bottomright"
   )
-
 ```
 
 ## Hierarchical clustering reveals four distinct groups
@@ -237,7 +214,6 @@ ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FA
 ```
 
 ```{r cluster_map}
-
 options(tigris_use_cache = TRUE)
 
 data_with_clusters <- cluster_data |> 
@@ -276,6 +252,57 @@ leaflet(county_clusters) |>
     title = "Cluster",
     position = "bottomright"
   )
+
+```
+
+## Cluster Profiles
+
+```{r cluster_profile}
+library(knitr)
+
+data_2025 <- data_2025 |> 
+  left_join(data_with_clusters |> select(fips, cluster), by = "fips")
+
+# data_2025 |>
+#   filter(!is.na(cluster)) |>
+#   group_by(cluster) |>
+#   summarize(
+#     `Cluster` = cluster,
+#     `Number of Counties` = n(),
+#     `Physically Inactive (%)` = mean(percent_physically_inactive, na.rm = TRUE),
+#     `Food Environment Index` = mean(food_environment_index, na.rm = TRUE),
+#     `Obesity Rate (%)` = mean(percent_adults_with_obesity, na.rm = TRUE),
+#     `Household Income` = mean(median_household_income, na.rm = TRUE),
+#     `Days Above 90F` = mean(days_above_90f, na.rm = TRUE),
+#     `Access To Parks (%)` = mean(percent_with_access_to_parks, na.rm = TRUE),
+#     `Unemployment Rate (%)` = mean(percent_unemployed, na.rm = TRUE),
+#     `Completed High School (%)` = mean(percent_completed_high_school, na.rm = TRUE),
+#     `Completed Some College (%)` = mean(percent_some_college, na.rm = TRUE)
+#   ) |> 
+#   kable(digits = 2)
+
+data_2025_long <- data_2025 |> 
+  filter(!is.na(cluster)) |> 
+  pivot_longer(
+    cols = -c(fips, state, county, cluster),
+    names_to = "variable", 
+    values_to = "value"
+  ) 
+
+data_2025_long |> ggplot(aes(x= factor(cluster), y = value, fill = factor(cluster))) +
+  geom_boxplot() +
+  labs(
+    x = "Cluster",
+    y = "Value",
+  ) +
+  facet_wrap(~variable, scales = "free_y") +
+  theme_bw(base_size = 8) +
+  theme(
+    strip.background = element_blank(),     
+    legend.position = "none"                    
+  )  |> 
+  ggthemes::scale_fill_colorblind()
+
 ```
 
 **Cluster 1 –** *Moderately inactive, decent food access, high obesity*
@@ -285,3 +312,23 @@ leaflet(county_clusters) |>
 **Cluster 3 –** *Very inactive, worst food access, high obesity*
 
 **Cluster 4 –** *Most active, best food access, lowest obesity – Best Case*
+
+## Recommendations Based On clusters
+
+improve access to parks in cluster 1+2
+
+in cluster 3 there are numerous days that are extremely hot so adding parks won't do much, instead build gyms
+
+## Plan of Action
+
+Completed:
+
+-   Create a map to see geographic data of obesity rates
+
+-   Create scatter plots to see the correlation between obesity, food access, and physical inactivity
+
+-   Clustering analysis and compare each cluster profiles
+
+Next Steps:
+
+-   Beta regression and decision trees

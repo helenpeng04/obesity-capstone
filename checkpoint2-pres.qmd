@@ -19,7 +19,7 @@ editor: visual
 
 ## Data Overview
 
--   Observations: Data at the county level across all 50 U.S. states in 202
+-   Observations: Data at the county level across all 50 U.S. states in 2025
 
 -   Variables of Interest:
 
@@ -35,7 +35,7 @@ editor: visual
 
     -   If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.
 
-    -   Seven counties that did not have data for obesity rate, our response variables and so, we had to drop those counties.
+    -   Seven counties that did not have data for obesity rate, our response variable and so, we had to drop those counties.
 
 ```{r setup}
 library(knitr)
@@ -180,7 +180,7 @@ leaflet(county_data) |>
   )
 ```
 
-## Hierarchical clustering reveals four distinct groups
+## Counties differ in obesity rates based on lifestyle and food environment
 
 ```{r dendro, include = FALSE}
 library(ggdendro)
@@ -221,8 +221,8 @@ county_clusters <- counties_sf |>
   left_join(data_with_clusters, by = "fips")
 
 county_clusters <- rmapshaper::ms_simplify(county_clusters, keep = 0.05)
-
 cluster_levels <- levels(data_with_clusters$cluster)
+
 pal <- colorFactor(
   palette = ggthemes::colorblind_pal()(length(cluster_levels)),
   domain = cluster_levels
@@ -259,24 +259,6 @@ library(knitr)
 
 data_2025 <- data_2025 |> 
   left_join(data_with_clusters |> select(fips, cluster), by = "fips")
-
-# data_2025 |>
-#   filter(!is.na(cluster)) |>
-#   group_by(cluster) |>
-#   summarize(
-#     `Cluster` = cluster,
-#     `Number of Counties` = n(),
-#     `Physically Inactive (%)` = mean(percent_physically_inactive, na.rm = TRUE),
-#     `Food Environment Index` = mean(food_environment_index, na.rm = TRUE),
-#     `Obesity Rate (%)` = mean(percent_adults_with_obesity, na.rm = TRUE),
-#     `Household Income` = mean(median_household_income, na.rm = TRUE),
-#     `Days Above 90F` = mean(days_above_90f, na.rm = TRUE),
-#     `Access To Parks (%)` = mean(percent_with_access_to_parks, na.rm = TRUE),
-#     `Unemployment Rate (%)` = mean(percent_unemployed, na.rm = TRUE),
-#     `Completed High School (%)` = mean(percent_completed_high_school, na.rm = TRUE),
-#     `Completed Some College (%)` = mean(percent_some_college, na.rm = TRUE)
-#   ) |>
-#   kable(digits = 2)
 
 data_2025_long <- data_2025 |> 
   filter(!is.na(cluster)) |> 
@@ -324,17 +306,10 @@ data_2025_long |>
     strip.background = element_blank(),     
     legend.position = "none"                    
   )
+
 ```
 
-**Cluster 1 –** Moderately inactive, decent food access, high obesity
-
-**Cluster 2 –** Very inactive, moderate food access, highest obesity
-
-**Cluster 3 –** Very inactive, worst food access, high obesity
-
-**Cluster 4 –** Most active, best food access, lowest obesity – Best Case
-
-## Recommendations Based On Clusters
+## Recommendations 
 
 improve access to parks in cluster 1+2
 
@@ -352,34 +327,43 @@ Completed:
 
 Next Steps:
 
--   Conduct beta regression and decision tree analysis to model obesity-related outcomes
--   Continue drafting the final report and designing the project poster
+-   Conduct beta regression to infer how key predictors relate to obesity rates, accounting for confounding variables
 
-```{r include = FALSE}
+-   Interpret regression results to identify significant factors influencing obesity at the county level
+
+-   Start drafting the final report and designing the project poster
+
+```{r beta_models, include = FALSE}
 library(betareg)
 
 data_2025 <- data_2025 |> 
-  mutate(
-    obesity_prop = percent_adults_with_obesity / 100
-    # inactivity_prop = percent_physically_inactive /100 do i also need to do this
-  )
+  mutate(obesity_prop = percent_adults_with_obesity / 100)
 
-beta_model <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
-summary(beta_model)
+beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
+summary(beta_simple)
 
-# colSums(is.na(data_2025))
+beta_full <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive + median_household_income + days_above_90f + percent_with_access_to_parks + percent_unemployed + percent_some_college + percent_completed_high_school, data = data_2025)
+summary(beta_full)
 
-data_2025$predicted_obesity <- predict(beta_model, type = "response")
+library(jtools)
 
-ggplot(data_2025, aes(x = obesity_prop, y = predicted_obesity)) +
-  geom_point(alpha = 0.5) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
-  labs(
-    x = "Observed Obesity Proportion",
-    y = "Predicted Obesity Proportion",
-    title = "Actual vs Predicted Obesity Proportions"
-  ) +
-  theme_minimal()
+# Shows the effect sizes and confidence intervals for each predictor
+# this is in the log-odds scale
+plot_summs(beta_simple, beta_full, 
+           model.names = c("Simple Beta Model", "Full Beta Model"),
+           scale = TRUE,
+           colors = c("purple", "darkgreen"),
+           omit.coefs = c("(phi)","(Intercept)")) +
+    ggtitle("Effect Size of Covariates Based on Model") 
 
-# i guess make MSE??? idk beta regression confuses me yo
+# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90°F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rate
+```
+
+```{r beta_diagnostics, include = FALSE}
+
+
+```
+
+```{r decision_tree, include = FALSE}
+
 ```

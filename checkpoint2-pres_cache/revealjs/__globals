@@ -9,3 +9,7 @@ unnamed-chunk-1	data_with_clusters
 unnamed-chunk-2	
 unnamed-chunk-3	
 cluster_profile	data_with_clusters
+cluster_profiles	data_with_clusters
+beta_models	
+beta_diagnostics	
+decision_tree	

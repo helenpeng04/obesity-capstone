@@ -106,8 +106,8 @@ library(patchwork)
 
 physical_obesity_plot <- data_2025 |>
   ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
-  geom_point(alpha = 0.6, color = "blue") +
-  geom_smooth(method = "gam", se = FALSE, color = "darkred") +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", se = FALSE) +
   labs(
     x = "% Physically Inactive",
     y = "% Adults with Obesity"
@@ -116,21 +116,21 @@ physical_obesity_plot <- data_2025 |>
 
 food_obesity_plot <- data_2025 |>
   ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
-  geom_point(alpha = 0.6, color = "darkgreen") +
-  geom_smooth(method = "gam", se = FALSE, color = "darkorange") +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", se = FALSE) +
   labs(
     x = "Food Environment Index (0 = worst, 10 = best)",
     y = "% Adults with Obesity"
   ) +
   theme_minimal()
 
-food_obesity_plot + physical_obesity_plot 
+physical_obesity_plot + food_obesity_plot 
 
 # cor(data_2025$percent_adults_with_obesity, data_2025$food_environment_index, use = "complete.obs")
 # cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
 ```
 
-## East coast has higher obesity rate than the west coast
+## Midwest and South have higher obesity rates than the west coast and the northeast. 
 
 ```{r obesity_map}
 library(tigris)
@@ -180,7 +180,7 @@ leaflet(county_data) |>
   )
 ```
 
-## Counties differ in obesity rates based on lifestyle and food environment
+## Lifestyle and food access plays a role in obesity rates
 
 ```{r dendro, include = FALSE}
 library(ggdendro)
@@ -212,7 +212,8 @@ ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FA
 ```
 
 ```{r cluster_map}
-options(tigris_use_cache = TRUE)
+
+library(usmap)
 
 data_with_clusters <- cluster_data |> 
   mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
@@ -223,36 +224,16 @@ county_clusters <- counties_sf |>
 county_clusters <- rmapshaper::ms_simplify(county_clusters, keep = 0.05)
 cluster_levels <- levels(data_with_clusters$cluster)
 
-pal <- colorFactor(
-  palette = ggthemes::colorblind_pal()(length(cluster_levels)),
-  domain = cluster_levels
-)
-
-leaflet(county_clusters) |> 
-  addProviderTiles("CartoDB.Positron") |> 
-  addPolygons(
-    fillColor = ~pal(cluster),
-    color = "black",
-    weight = 0.3,
-    fillOpacity = 0.8,
-    label = ~paste0(NAME, ", ", STATE_NAME, ": ", 
-                    ifelse(is.na(cluster), "No data", paste("Cluster", cluster))),
-    highlightOptions = highlightOptions(
-      weight = 1,
-      color = "#666",
-      fillOpacity = 0.9,
-      bringToFront = TRUE
-    )
-  ) |> 
-  addLegend(
-    pal = pal,
-    values = ~cluster,
-    title = "Cluster",
-    position = "bottomright"
-  )
+cluster_map <- plot_usmap(data = data_with_clusters, values = "cluster") +
+  scale_fill_manual(
+    values = ggthemes::colorblind_pal()(4),
+    name = "Cluster",
+    na.value = "gray90"
+  ) +
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.title = element_text(face = "bold"))
 ```
-
-## Cluster Profiles
 
 ```{r cluster_profiles}
 library(knitr)
@@ -292,7 +273,7 @@ data_2025_long <- data_2025 |>
     ))
   )
 
-data_2025_long |> 
+profile_boxplot <- data_2025_long |> 
   ggplot(aes(x = factor(cluster), y = value, fill = factor(cluster))) +
   geom_boxplot() +
   labs(
@@ -307,6 +288,7 @@ data_2025_long |>
     legend.position = "none"                    
   )
 
+cluster_map + profile_boxplot
 ```
 
 ## Recommendations 

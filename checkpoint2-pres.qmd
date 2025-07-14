@@ -311,9 +311,17 @@ data_2025_long |>
 
 ## Recommendations 
 
-improve access to parks in cluster 1+2
+-   **Clusters 1 & 2**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
 
-in cluster 3 there are numerous days that are extremely hot so adding parks won't do much, instead we could build gyms
+-   **Cluster 3**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
+
+-   **General Recommendations**:
+
+    -   Prioritize the young population by targeting environments that shape long-term health behaviors early in life.
+
+    -   Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.
+
+    -   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
 
 ## Plan of Action
 

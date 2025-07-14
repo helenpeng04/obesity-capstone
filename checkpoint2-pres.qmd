@@ -346,14 +346,5 @@ plot_summs(beta_simple, beta_full,
            omit.coefs = c("(phi)","(Intercept)")) +
     ggtitle("Effect Size of Covariates Based on Model") 
 
-# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90°F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rate
-```
-
-```{r beta_diagnostics, include = FALSE}
-
-
-```
-
-```{r decision_tree, include = FALSE}
-
+# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90°F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rates
 ```

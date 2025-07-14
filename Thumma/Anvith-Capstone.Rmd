@@ -17,27 +17,16 @@ library(rpart)
 library(caret)
 library(rpart.plot)
 library(corrplot)
+library(glmnet)
+library(betareg)
+library(broom)
 ```
 
 ```{r}
-data_2024 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2024_CHRD.xlsx', sheet = "Select Measure Data", skip = 1)
-
 data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2025_CHRD.xlsx', sheet = "Additional Measure Data", skip = 1)
 
 food_index_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2025_CHRD.xlsx', sheet = "Select Measure Data", skip = 1)
 
-```
-
-
-```{r}
-eda_2024 <- data_2024 |>
-  select(State, 
-         County, 
-         Obesity = `% Adults with Obesity`, 
-         Population = `Population...169`, 
-         Inactivity = `% Physically Inactive`,
-         FoodAccess = `Food Environment Index`) |>
-  drop_na()
 ```
 
 ```{r}
@@ -99,6 +88,21 @@ data_2025 <- data_2025 |>
 ```
 
 ```{r}
+data_2025 |> 
+  summarise(across(
+    c(percent_adults_with_obesity, percent_physically_inactive, food_environment_index),
+    ~ sum(is.na(.))
+  ))
+```
+
+```{r}
+data_2025 <- data_2025 |> 
+  filter(!is.na(percent_adults_with_obesity),
+         !is.na(percent_physically_inactive))
+```
+
+
+```{r}
 names(data_2025)
 
 
@@ -108,61 +112,6 @@ data_2025 <- data_2025 |>
     inactivity = percent_physically_inactive,
     food_index = food_environment_index
   )
-```
-
-
-```{r}
-# # compute average obesity rate by state
-# state_avgs <- eda_2024 |>
-#   group_by(State) |>
-#   summarize(avg_obesity = mean(Obesity, na.rm = T)) |>
-#   arrange(desc(avg_obesity))
-# 
-# # get one lowest, one highest, and 3 random from the rest
-# highest_state  <- state_avgs |> slice(1) |> pull(State)
-# lowest_state <- state_avgs |> slice(n() - 1) |> pull(State)
-# other_states  <- state_avgs |> filter(!(State %in% c(lowest_state, highest_state))) |>
-#                    slice_sample(n = 3) |> pull(State)
-# 
-# 
-# # selected states into a vector
-# selected_states <- c(highest_state, lowest_state, other_states)
-# 
-# # Filter states
-# eda_2024_filtered <- eda_2024 |> 
-#   filter(State %in% selected_states)
-# 
-# # Plot 
-# eda_2024_filtered |>
-#   ggplot(aes(x = Population, y = Obesity, color = State)) +
-#   geom_jitter(alpha = 0.7, width = 0.1, height = 0.5, size = 2) +
-#   geom_hline(data = state_avgs |> 
-#                filter(State %in% selected_states),
-#              aes(yintercept = avg_obesity, color = State),
-#              linetype = "dashed", linewidth = 1) +
-#   scale_x_log10() +
-#   labs(title = "% Adults with Obesity by County (2024) - Selected States",
-#        x = "Population (log scale)",
-#        y = "% Adults with Obesity",
-#        color = "State")
-```
-
-```{r}
-# # Select and scale the variables
-# cluster_data <- eda_2024 |>
-#   select(Obesity, Inactivity, FoodAccess) |>
-#   na.omit() |>
-#   scale()
-# 
-# 
-# set.seed(42)
-# km <- kmeans(cluster_data, centers = 4, nstart = 25)
-# 
-# # Visualize clusters
-# fviz_cluster(km, data = cluster_data,
-#              geom = "point",
-#              main = "Clusters of Counties by Obesity, Inactivity, and Food Access")
-
 ```
 
 ```{r}
@@ -222,27 +171,6 @@ corrplot(cor_matrix,
 
 
 ```
-
-```{r}
-# clean_data <- data_2025 |>
-#   drop_na()
-# 
-# set.seed(123)
-# 
-# ob_tree <- train(obesity ~ inactivity + food_index,
-#                  method = "rpart",
-#                  data = clean_data, 
-#                  tuneLength = 20,
-#                  trControl = trainControl(method = "cv", number = 10))
-# 
-# ggplot(ob_tree)
-# 
-# ob_tree |> 
-#   pluck("finalModel") |> 
-#   rpart.plot()
-```
-
-
 
 ```{r}
 
@@ -318,9 +246,139 @@ data_2025 |>
        y = "Food Index")
   
 ```
+#################
+### Modeleing ### 
+#################
+
+```{r}
+# Build decision tree
+tree <- rpart(obesity ~ inactivity + food_index +
+                median_household_income + percent_unemployed +
+                percent_completed_high_school + percent_some_college +
+                traffic_volume + days_above_90f +
+                percent_with_access_to_parks + percent_rural +
+                percent_severe_housing_problems,
+              data = data_2025, method = "anova")
+
+rpart.plot(tree)
+```
+```{r}
+model_vars <- c(
+  "obesity", "inactivity", "food_index",
+  "median_household_income", "percent_unemployed",
+  "percent_completed_high_school", "percent_some_college",
+  "traffic_volume", "days_above_90f",
+  "percent_with_access_to_parks", "percent_rural",
+  "percent_severe_housing_problems"
+)
+
+model_data <- data_2025 |> 
+  select(all_of(model_vars)) |> 
+  na.omit()
+
+model_data <- model_data |>
+  mutate(
+    # Convert from percentage (38.4) to proportion (0.384)
+    obesity_prop = obesity / 100,
+    
+    # Transform to (0,1) exclusive using the recommended transformation
+    # This handles boundary values (0 and 1) which beta regression cannot handle
+    n = nrow(model_data),
+    obesity_beta = (obesity_prop * (n - 1) + 0.5) / n
+  )
+
+# Check the transformation worked
+summary(model_data$obesity_beta)
+```
+```{r}
+# Main beta regression model
+beta_model_one <- betareg(
+  obesity_beta ~ inactivity + food_index + 
+      median_household_income + percent_unemployed +
+      percent_completed_high_school + percent_some_college +
+      traffic_volume + days_above_90f +
+      percent_with_access_to_parks + percent_rural +
+      percent_severe_housing_problems, 
+  data = model_data,
+  link = "logit"  
+)
+
+# Model summary
+summary(beta_model_one)
 
 
+# Second Model (reduced)
+beta_model_two <- betareg(
+  obesity_beta ~ inactivity + food_index + 
+    median_household_income + days_above_90f +
+    percent_with_access_to_parks + percent_rural, 
+  data = model_data,
+  link = "logit" 
+)
 
+# Model summary
+summary(beta_model_two)
+```
 
+```{r}
+# Compare full vs reduced model
+model_comparison_data <- bind_rows(
+  tidy(beta_model_one) |> 
+    filter(component == "mean", term != "(Intercept)") |>
+    mutate(model = "Full Model"),
+  tidy(beta_model_two) |> 
+    filter(component == "mean", term != "(Intercept)") |>
+    mutate(model = "Reduced Model")
+) |>
+  mutate(
+    ci_lower = estimate - 1.96 * std.error,
+    ci_upper = estimate + 1.96 * std.error,
+    significant = p.value < 0.05,
+    term_clean = case_when(
+      term == "inactivity" ~ "Physical Inactivity (%)",
+      term == "food_index" ~ "Food Environment Index",
+      term == "median_household_income" ~ "Median Household Income",
+      term == "percent_unemployed" ~ "Unemployment Rate (%)",
+      term == "percent_completed_high_school" ~ "High School Completion (%)",
+      term == "percent_some_college" ~ "Some College (%)",
+      term == "traffic_volume" ~ "Traffic Volume",
+      term == "days_above_90f" ~ "Days Above 90°F",
+      term == "percent_with_access_to_parks" ~ "Access to Parks (%)",
+      term == "percent_rural" ~ "Rural Population (%)",
+      term == "percent_severe_housing_problems" ~ "Severe Housing Problems (%)"
+    )
+  )
 
+ggplot(model_comparison_data, aes(x = estimate, y = term_clean, color = model)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+  geom_point(position = position_dodge(width = 0.5), size = 3) +
+  geom_errorbarh(aes(xmin = ci_lower, xmax = ci_upper),
+                 position = position_dodge(width = 0.5), height = 0.2, linewidth = 0.8) +
+  scale_color_manual(values = c("Full Model" = "steelblue", "Reduced Model" = "darkred")) +
+  labs(
+    title = "Model Comparison: Full vs Reduced Model",
+    x = "Coefficient Estimate",
+    y = "",
+    color = "Model"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+# For some reason food index actually seems to have a positive relationship with obesity
+summary(model_data$food_index)
+cor(model_data$food_index, model_data$obesity_beta)
+```
+
+```{r}
+# Check correlations between food_index and other predictors
+cor_matrix <- cor(model_data[, c("food_index", "inactivity", "median_household_income", 
+                                "percent_unemployed", "percent_completed_high_school", 
+                                "percent_some_college", "traffic_volume", "days_above_90f", 
+                                "percent_with_access_to_parks", "percent_rural", 
+                                "percent_severe_housing_problems", "obesity_beta")])
+
+print(round(cor_matrix["food_index", ], 3))
+```
 

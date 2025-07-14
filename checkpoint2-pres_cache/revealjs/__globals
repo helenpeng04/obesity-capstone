@@ -13,3 +13,4 @@ cluster_profiles	cluster_map	data_with_clusters
 beta_models	
 beta_diagnostics	
 decision_tree	
+clustering	cluster_data	counties_sf	hc_complete

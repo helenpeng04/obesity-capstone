@@ -211,8 +211,7 @@ ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FA
   )
 ```
 
-```{r cluster_map}
-
+```{r clustering}
 library(usmap)
 
 data_with_clusters <- cluster_data |> 
@@ -230,13 +229,9 @@ cluster_map <- plot_usmap(data = data_with_clusters, values = "cluster") +
     name = "Cluster",
     na.value = "gray90"
   ) +
-  theme(legend.position = "right",
+  theme(legend.position = "left",
         plot.title = element_text(hjust = 0.5, face = "bold"),
         legend.title = element_text(face = "bold"))
-```
-
-```{r cluster_profiles}
-library(knitr)
 
 data_2025 <- data_2025 |> 
   left_join(data_with_clusters |> select(fips, cluster), by = "fips")
@@ -293,9 +288,9 @@ cluster_map + profile_boxplot
 
 ## Recommendations 
 
--   **Clusters 1 & 2**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
+-   **Clusters 2 & 4 (Mostly Northwest)**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
 
--   **Cluster 3**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
+-   **Cluster 1 & 3 (Mostly Southeast)**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
 
 -   **General Recommendations**:
 

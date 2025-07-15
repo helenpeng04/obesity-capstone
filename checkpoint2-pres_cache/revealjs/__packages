@@ -19,3 +19,6 @@ betareg
 nlme
 mgcv
 rpart
+ggthemes
+jtools
+usmap

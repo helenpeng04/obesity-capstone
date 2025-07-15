@@ -1,0 +1,107 @@
+---
+title: "randomForestVar"
+author: "Helen Peng"
+date: "2025-07-11"
+output: html_document
+---
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025_data.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025_data.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- data_2025 |> 
+  janitor::clean_names() 
+
+food_index_2025 <- food_index_2025 |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips") 
+data_2025 <- data_2025[, !grepl("percent_ci", names(data_2025))]
+data_2025 <- data_2025[, !grepl("national_z", names(data_2025))]
+data_2025 <- data_2025[, !grepl("injury_death", names(data_2025))]
+data_2025 <- data_2025[, !grepl("percentile", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_white", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_hispanic", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_aian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_asian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_black", names(data_2025))]
+data_2025 <- data_2025[, !grepl("dentist", names(data_2025))]
+data_2025 <- data_2025[, !grepl("unreliable", names(data_2025))]
+data_2025 <- data_2025[, !grepl("deaths", names(data_2025))]
+
+drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","percent_uninsured")
+data_2025 <- data_2025[,!(names(data_2025) %in% drop_cols)]
+rm(food_index_2025)
+
+data_2025 <- data_2025  |> 
+  rename(
+    county = county.x,
+    state = state.x
+  )
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index
+    )
+  ) |> 
+  select(-statewide_food_environment_index) |> 
+  filter(!is.na(percent_adults_with_obesity))
+
+rm(statewide_food_index, drop_cols, old_ct_fips)     
+
+data_2025 <- na.omit(data_2025)
+```
+
+```{r beta_reg}
+library(betareg)
+
+data_2025 <- data_2025 |> 
+  mutate(obesity_prop = percent_adults_with_obesity / 100)
+
+beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
+summary(beta_simple)
+
+beta_full <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive + median_household_income + days_above_90f + percent_with_access_to_parks + percent_unemployed + percent_some_college + percent_completed_high_school + traffic_volume + percent_rural + percent_severe_housing_problems, data = data_2025)
+summary(beta_full)
+
+library(jtools)
+
+# Shows the effect sizes and confidence intervals for each predictor
+# this is in the log-odds scale
+plot_summs(beta_simple, beta_full, 
+           model.names = c("Simple Beta Model", "Full Beta Model"),
+           scale = TRUE,
+           colors = c("purple", "darkgreen"),
+           omit.coefs = c("(phi)","(Intercept)")) +
+    ggtitle("Effect Size of Covariates Based on Model") 
+```
+
+```{r var_imp}
+library(caret)
+library(vip)
+
+set.seed(10)
+
+tree <- train(percent_adults_with_obesity ~ .- obesity_prop, method = "rpart", tuneLength = 20,
+                 trControl = trainControl(method = "cv", number = 10),
+                 data = data_2025)
+ggplot(tree)
+tree |> vip()
+```

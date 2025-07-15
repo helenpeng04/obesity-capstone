@@ -76,7 +76,6 @@ data_2025 <- merge(data_2025, food_index_2025, by = "fips")
 ```
 
 ```{r missing_data}
-
 old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
 
 statewide_food_index <- data_2025 |> 
@@ -99,7 +98,7 @@ data_2025 <- data_2025 |>
   filter(!is.na(percent_adults_with_obesity))
 ```
 
-## Obesity rates increases as physical inactivity increases and better access to food decreases
+## As physical inactivity increases obesity rates increases and as better access to food increases obesity rates decreases. 
 
 ```{r scatterplot}
 library(patchwork)
@@ -130,7 +129,7 @@ physical_obesity_plot + food_obesity_plot
 # cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
 ```
 
-## Midwest and South have higher obesity rates than the west coast and the northeast. 
+## Midwest and South have higher obesity rates than the west coast and the northeast.
 
 ```{r obesity_map}
 library(tigris)
@@ -286,7 +285,7 @@ profile_boxplot <- data_2025_long |>
 cluster_map + profile_boxplot
 ```
 
-## Recommendations 
+## Recommendations
 
 -   **Clusters 2 & 4 (Mostly Northwest)**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
 
@@ -304,19 +303,19 @@ cluster_map + profile_boxplot
 
 Completed:
 
--   Created a map to visualize geographic patterns in obesity rates
+-   Created scatter plots to explore relationships between obesity, food access, and physical inactivity
 
--   Generated scatter plots to explore relationships between obesity, food access, and physical inactivity
+-   Created a map to visualize geographic patterns in obesity rates
 
 -   Performed clustering analysis and compared profiles across clusters
 
 Next Steps:
 
--   Conduct beta regression to infer how key predictors relate to obesity rates, accounting for confounding variables
+-   Conduct beta regression for our modeling and interpret the results in our context
 
--   Interpret regression results to identify significant factors influencing obesity at the county level
+-   Potentially use decision trees and variable importance to find other significant factors in predicting obesity rates
 
--   Start drafting the final report and designing the project poster
+-   Start drafting the final report and designing the poster and making our final presentation
 
 ```{r beta_models, include = FALSE}
 library(betareg)

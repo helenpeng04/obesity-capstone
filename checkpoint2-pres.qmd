@@ -285,37 +285,11 @@ profile_boxplot <- data_2025_long |>
 cluster_map + profile_boxplot
 ```
 
-```{r beta_models, include = FALSE}
-library(betareg)
-
-data_2025 <- data_2025 |> 
-  mutate(obesity_prop = percent_adults_with_obesity / 100)
-
-beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
-summary(beta_simple)
-
-beta_full <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive + median_household_income + days_above_90f + percent_with_access_to_parks + percent_unemployed + percent_some_college + percent_completed_high_school, data = data_2025)
-summary(beta_full)
-
-library(jtools)
-
-# Shows the effect sizes and confidence intervals for each predictor
-# this is in the log-odds scale
-plot_summs(beta_simple, beta_full, 
-           model.names = c("Simple Beta Model", "Full Beta Model"),
-           scale = TRUE,
-           colors = c("purple", "darkgreen"),
-           omit.coefs = c("(phi)","(Intercept)")) +
-    ggtitle("Effect Size of Covariates Based on Model") 
-
-# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rates
-```
-
 ## Recommendations
 
--   **Clusters 2 (Mostly Northwest)**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
+-   **Cluster-Based Recommendation:**
 
--   **Cluster 1 & 3 (Mostly Southeast)**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
+    -   We see that the majority of the U.S. have low park access; improving this can reduce inactivity, but in hotter regions (Clusters 1 & 3, Southeast), indoor facilities should be prioritized due to extreme heat.
 
 -   **General Recommendations**:
 

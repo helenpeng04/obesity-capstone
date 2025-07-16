@@ -5,7 +5,7 @@ date: "2025-07-11"
 output: html_document
 ---
 
-```{r cleaning}
+```{r vip_cleaning}
 library(readxl)
 library(tidyverse)
 theme_set(theme_bw())

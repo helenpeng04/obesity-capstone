@@ -319,6 +319,17 @@ beta_model_two <- betareg(
 
 # Model summary
 summary(beta_model_two)
+
+# Third Model
+beta_model_three <- betareg(
+  obesity_beta ~ inactivity + food_index + days_above_90f +
+    percent_with_access_to_parks, 
+  data = model_data,
+  link = "logit" 
+)
+
+# Model summary
+summary(beta_model_three)
 ```
 
 ```{r}

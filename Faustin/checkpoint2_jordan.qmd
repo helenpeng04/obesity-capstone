@@ -15,13 +15,13 @@ editor: visual
 
 -   **Disparities in Obesity:** Obesity rates vary widely by region, income, and race/ethnicity. Identifying structural barriers (like food access and inactivity) can inform equitable policies.
 
--   **Rise in Weight Loss Drugs:** Medications like Ozempic are gaining popularity as quick fixes. But they’re expensive and don’t address root causes like environment or behavior.
+-   **Rise in Weight Loss Drugs:** Medications like Ozempic and Wegovy are gaining popularity as quick fixes, but they’re expensive and don’t address root causes like environment or behavior.
 
 ## Data Overview
 
--   Observations: Data at the county level across all 50 U.S. states in 2025
+-   **Observations:** Data at the county level across all 50 U.S. states in 2025
 
--   Variables of Interest:
+-   **Variables of Interest:**
 
     -   \% Adults with Obesity
 
@@ -31,7 +31,7 @@ editor: visual
 
     -   State and County Identifiers
 
--   Handling Missing Data
+-   **Handling Missing Data:**
 
     -   If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.
 
@@ -49,9 +49,9 @@ library(readxl)
 library(tidyverse)
 theme_set(theme_bw())
 
-data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Additional Measure Data", skip = 1)
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025_data.xlsx", sheet = "Additional Measure Data", skip = 1)
 
-food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
+food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025_data.xlsx", sheet = "Select Measure Data", skip = 1)
 
 data_2025 <- data_2025 |> 
   select(FIPS, State, County,
@@ -98,7 +98,7 @@ data_2025 <- data_2025 |>
   filter(!is.na(percent_adults_with_obesity))
 ```
 
-## As physical inactivity increases obesity rates increases and as better access to food increases obesity rates decreases.
+## As physical inactivity increases obesity rates increases and as access to healthy food increases obesity rates decreases.
 
 ```{r scatterplot}
 library(patchwork)
@@ -287,38 +287,6 @@ profile_boxplot <- data_2025_long |>
 cluster_map + profile_boxplot
 ```
 
-## Recommendations
-
--   **Clusters 2 & 4 (Mostly Northwest)**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
-
--   **Cluster 1 & 3 (Mostly Southeast)**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
-
--   **General Recommendations**:
-
-    -   Prioritize the young population by targeting environments that shape long-term health behaviors early in life.
-
-    -   Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.
-
-    -   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
-
-## Plan of Action
-
-Completed:
-
--   Created scatter plots to explore relationships between obesity, food access, and physical inactivity
-
--   Created a map to visualize geographic patterns in obesity rates
-
--   Performed clustering analysis and compared profiles across clusters
-
-Next Steps:
-
--   Conduct beta regression for our modeling and interpret the results in our context
-
--   Potentially use decision trees and variable importance to find other significant factors in predicting obesity rates
-
--   Start drafting the final report and designing the poster and making our final presentation
-
 ```{r beta_models, include = FALSE}
 library(betareg)
 
@@ -342,5 +310,37 @@ plot_summs(beta_simple, beta_full,
            omit.coefs = c("(phi)","(Intercept)")) +
     ggtitle("Effect Size of Covariates Based on Model") 
 
-# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90°F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rates
+# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rates
 ```
+
+## Recommendations
+
+-   **Clusters 2 (Mostly Northwest)**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
+
+-   **Cluster 1 & 3 (Mostly Southeast)**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
+
+-   **General Recommendations**:
+
+    -   Prioritize the young population by targeting environments that shape long-term health behaviors early in life.
+
+    -   Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.
+
+    -   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
+
+## Plan of Action
+
+**Completed:**
+
+-   Created scatter plots to explore relationships between obesity, food access, and physical inactivity
+
+-   Created a map to visualize geographic patterns in obesity rates
+
+-   Performed clustering analysis and compared profiles across clusters
+
+**Next Steps:**
+
+-   Conduct beta regression to quantify the effects of our two predictors
+
+-   Potentially use decision trees and variable importance to find other predictors of obesity rates
+
+-   Start drafting the final report, designing the poster, and making our final presentation

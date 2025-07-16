@@ -1,0 +1,345 @@
+---
+title: "Does physical inactivity level and access to healthy food affect obesity rate at the county level?"
+author: Helen Peng, Anvith Thumma, and Jordan Faustin
+format: 
+  revealjs:
+    theme: simple
+    slide-number: true
+    smaller: true
+editor: visual
+---
+
+## Why This Question is Important
+
+-   **Public Health Crisis:** Obesity is a major contributor to chronic diseases (diabetes, heart disease, cancer) and rising healthcare costs.
+
+-   **Disparities in Obesity:** Obesity rates vary widely by region, income, and race/ethnicity. Identifying structural barriers (like food access and inactivity) can inform equitable policies.
+
+-   **Rise in Weight Loss Drugs:** Medications like Ozempic are gaining popularity as quick fixes. But they’re expensive and don’t address root causes like environment or behavior.
+
+## Data Overview
+
+-   Observations: Data at the county level across all 50 U.S. states in 2025
+
+-   Variables of Interest:
+
+    -   \% Adults with Obesity
+
+    -   \% Physically Inactive
+
+    -   Food Environment Index (1-10) - Higher is Better
+
+    -   State and County Identifiers
+
+-   Handling Missing Data
+
+    -   If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.
+
+    -   Seven counties that did not have data for obesity rate, our response variable and so, we had to drop those counties.
+
+```{r setup}
+library(knitr)
+opts_chunk$set(cache=TRUE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE, fig.align="center",
+               echo=FALSE, tidy=TRUE)
+```
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
+
+
+data_2025 <- data_2025 |> 
+  select(FIPS, State, County,
+         `Median Household Income`,
+         `Days above 90F`,
+         `% with access to parks`,
+         `% Physically Inactive`,
+         `% Adults with Obesity`
+  ) |> 
+  janitor::clean_names() 
+
+food_index_2025 <- food_index_2025 |> 
+  select(FIPS, 
+         `% Unemployed`,
+         `% Completed High School`,
+         `% Some College`,
+         `Food Environment Index`
+  ) |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips")
+```
+
+```{r missing_data}
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index
+    )
+  ) |> 
+  select(-statewide_food_environment_index) |> 
+  filter(!is.na(county)) |> 
+  filter(!is.na(percent_adults_with_obesity))
+```
+
+## As physical inactivity increases obesity rates increases and as better access to food increases obesity rates decreases.
+
+```{r scatterplot}
+library(patchwork)
+
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+physical_obesity_plot + food_obesity_plot 
+
+# cor(data_2025$percent_adults_with_obesity, data_2025$food_environment_index, use = "complete.obs")
+# cor(data_2025$percent_adults_with_obesity, data_2025$percent_physically_inactive, use = "complete.obs")
+```
+
+## Midwest and South have higher obesity rates than the west coast and the northeast.
+
+```{r obesity_map}
+library(tigris)
+library(leaflet)
+library(sf)
+
+options(tigris_use_cache = TRUE)
+
+counties_sf <- counties(cb = TRUE, resolution = "5m", class = "sf") |>
+  mutate(fips = paste0(STATEFP, COUNTYFP))
+
+county_data <- counties_sf |> 
+  left_join(data_2025, by = "fips") |>
+  filter(!is.na(percent_adults_with_obesity))
+
+county_data <- rmapshaper::ms_simplify(county_data, keep = 0.05)
+
+q_brks <- quantile(county_data$percent_adults_with_obesity, probs = seq(0, 1, length.out = 6), na.rm = TRUE)
+
+pal <- colorBin(
+  palette = "YlOrRd",
+  bins = q_brks,
+  na.color = "transparent"
+)
+
+leaflet(county_data) |> 
+  addProviderTiles("CartoDB.Positron") |> 
+  addPolygons(
+    fillColor = ~pal(percent_adults_with_obesity),
+    color = "black",
+    weight = 0.3,
+    fillOpacity = 0.8,
+    label = ~paste0(
+      NAME, ", ", STATE_NAME, ": ", round(percent_adults_with_obesity, 1), "%"),
+    highlightOptions = highlightOptions(
+      weight = 1,
+      color = "#666",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    )
+  ) |> 
+  addLegend(
+    pal = pal,
+    values = ~percent_adults_with_obesity,
+    title = "Obesity Rate (%)",
+    position = "bottomright"
+  )
+```
+
+## Lifestyle and food access plays a role in obesity rates
+
+```{r dendro, include = FALSE}
+library(ggdendro)
+
+cluster_data <- data_2025 |>
+  select(fips,
+         state,
+         county,
+         percent_adults_with_obesity,
+         percent_physically_inactive,
+         food_environment_index) |> 
+  drop_na()
+
+std_data_features <- cluster_data |> 
+  select(percent_adults_with_obesity, percent_physically_inactive, food_environment_index) |> 
+  scale()
+
+county_dist <- dist(std_data_features, method = "euclidean")
+hc_complete <- hclust(county_dist, method = "complete")
+
+ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FALSE) +    labs(title = "Complete Linkage", y = "Dissimilarity") +
+  theme_minimal() +
+  theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      plot.title = element_text(size = 12, face = "bold"),
+      panel.grid = element_blank()
+  )
+```
+
+```{r clustering}
+library(usmap)
+
+data_with_clusters <- cluster_data |> 
+  mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
+
+county_clusters <- counties_sf |> 
+  left_join(data_with_clusters, by = "fips")
+
+county_clusters <- rmapshaper::ms_simplify(county_clusters, keep = 0.05)
+cluster_levels <- levels(data_with_clusters$cluster)
+
+cluster_map <- plot_usmap(data = data_with_clusters, values = "cluster") +
+  scale_fill_manual(
+    values = ggthemes::colorblind_pal()(4),
+    name = "Cluster",
+    na.value = "gray90"
+  ) +
+  theme(legend.position = "left",
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.title = element_text(face = "bold"))
+
+data_2025 <- data_2025 |> 
+  left_join(data_with_clusters |> select(fips, cluster), by = "fips")
+
+data_2025_long <- data_2025 |> 
+  filter(!is.na(cluster)) |> 
+  pivot_longer(
+    cols = -c(fips, state, county, cluster),
+    names_to = "variable", 
+    values_to = "value"
+  ) |> 
+  mutate(
+    variable = recode(variable,
+      median_household_income = "Median Household Income",
+      days_above_90f = "Days Above 90F",
+      percent_adults_with_obesity = "Adults with Obesity (%)",
+      percent_with_access_to_parks = "Access To Parks (%)",
+      percent_physically_inactive = "Physically Inactive (%)",
+      percent_unemployed = "Unemployment Rate (%)",
+      percent_completed_high_school = "Completed High School (%)",
+      percent_some_college = "Completed Some College (%)",
+      food_environment_index = "Food Environment Index"
+    ),
+    variable = factor(variable, levels = c(
+      "Adults with Obesity (%)",
+      "Food Environment Index",
+      "Physically Inactive (%)",
+      "Access To Parks (%)",
+      "Completed High School (%)",
+      "Completed Some College (%)",
+      "Unemployment Rate (%)",
+      "Median Household Income",
+      "Days Above 90F"
+    ))
+  )
+
+profile_boxplot <- data_2025_long |> 
+  ggplot(aes(x = factor(cluster), y = value, fill = factor(cluster))) +
+  geom_boxplot() +
+  labs(
+    x = "Cluster",
+    y = "Value"
+  ) +
+  facet_wrap(~variable, scales = "free_y") +
+  ggthemes::scale_fill_colorblind() +    
+  theme_bw(base_size = 8) +
+  theme(
+    strip.background = element_blank(),     
+    legend.position = "none"                    
+  )
+
+cluster_map + profile_boxplot
+```
+
+## Recommendations
+
+-   **Clusters 2 & 4 (Mostly Northwest)**: Improve access to parks and outdoor recreational spaces to help reduce physical inactivity and support healthier lifestyles.
+
+-   **Cluster 1 & 3 (Mostly Southeast)**: Given the high frequency of extreme heat days, outdoor solutions may be less effective. Instead, prioritize investment in indoor facilities such as community gyms or wellness centers.
+
+-   **General Recommendations**:
+
+    -   Prioritize the young population by targeting environments that shape long-term health behaviors early in life.
+
+    -   Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.
+
+    -   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
+
+## Plan of Action
+
+Completed:
+
+-   Created scatter plots to explore relationships between obesity, food access, and physical inactivity
+
+-   Created a map to visualize geographic patterns in obesity rates
+
+-   Performed clustering analysis and compared profiles across clusters
+
+Next Steps:
+
+-   Conduct beta regression for our modeling and interpret the results in our context
+
+-   Potentially use decision trees and variable importance to find other significant factors in predicting obesity rates
+
+-   Start drafting the final report and designing the poster and making our final presentation
+
+```{r beta_models, include = FALSE}
+library(betareg)
+
+data_2025 <- data_2025 |> 
+  mutate(obesity_prop = percent_adults_with_obesity / 100)
+
+beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
+summary(beta_simple)
+
+beta_full <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive + median_household_income + days_above_90f + percent_with_access_to_parks + percent_unemployed + percent_some_college + percent_completed_high_school, data = data_2025)
+summary(beta_full)
+
+library(jtools)
+
+# Shows the effect sizes and confidence intervals for each predictor
+# this is in the log-odds scale
+plot_summs(beta_simple, beta_full, 
+           model.names = c("Simple Beta Model", "Full Beta Model"),
+           scale = TRUE,
+           colors = c("purple", "darkgreen"),
+           omit.coefs = c("(phi)","(Intercept)")) +
+    ggtitle("Effect Size of Covariates Based on Model") 
+
+# In the simple beta regression model, both physical inactivity and food environment index were statistically significant predictors of county-level obesity rates. Higher physical inactivity and better food access were both associated with higher obesity proportions. In the full model, after controlling for additional contextual factors—including median household income, education level, access to parks, unemployment rate, and climate (days above 90°F)—physical inactivity and food environment index remained significant predictors of obesity. This suggests that their association with obesity is robust, even after accounting for other potential confounders.Only Some College Completion and Umeployment Rate was were not a significant predicto of obesity rates
+```

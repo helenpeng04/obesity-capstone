@@ -53,7 +53,6 @@ data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx"
 
 food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
 
-
 data_2025 <- data_2025 |> 
   select(FIPS, State, County,
          `Median Household Income`,
@@ -177,7 +176,9 @@ leaflet(county_data) |>
     values = ~percent_adults_with_obesity,
     title = "Obesity Rate (%)",
     position = "bottomright"
-  )
+  ) |>
+  # Add fitBounds to zoom to the continental US
+  fitBounds(lng1 = -125, lat1 = 25, lng2 = -65, lat2 = 50)
 ```
 
 ## Lifestyle and food access plays a role in obesity rates

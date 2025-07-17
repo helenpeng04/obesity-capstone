@@ -244,7 +244,7 @@ pretty_labels <- c(
   "median_household_income" = "Median Household Income",
   "percent_adults_reporting_currently_smoking" = "Smoking",
   "percent_excessive_drinking" = "Excessive Drinking",
-  "percent_below_18_years_of_age" = "Below 18 Years Old",
+  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
   "percent_insufficient_sleep" = "Insufficient Sleep",
   "school_funding_adequacy" = "School Funding Adequacy",
   "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
@@ -271,15 +271,20 @@ vip(top_vi, aesthetics = list(fill = "steelblue")) +
 library(betareg)
 library(margins)
 
+
+# lm_simple <- glm(percent_adults_with_obesity ~ food_environment_index + percent_physically_inactive, data = data_2025)
+# summary(lm_simple)
+# plot(lm_simple, which = 1:4)
+
 data_2025 <- data_2025 |>
   mutate(obesity_prop = percent_adults_with_obesity / 100)
 
-beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025)
+beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025, link = "logit")
 beta_full <- betareg(obesity_prop ~ percent_physically_inactive + median_household_income + 
                       percent_adults_reporting_currently_smoking + percent_excessive_drinking + 
                       percent_below_18_years_of_age + percent_insufficient_sleep + 
                       school_funding_adequacy + percent_households_with_severe_cost_burden + 
-                      percent_uninsured_adults + traffic_volume + food_environment_index, 
+                      percent_uninsured_adults + traffic_volume + food_environment_index, link = "logit",
                     data = data_2025)
 
 me_simple <- margins(beta_simple)
@@ -313,21 +318,19 @@ ggplot(margin_df, aes(x = reorder(factor, AME_percent), y = AME_percent, color =
     y = "Effect on Obesity Rate (%)",
     color = "Model"
   ) 
+
+# margin_df |> 
+#   select(factor, model, AME_percent, Lower, Upper, p) |>
+#   kable(col.names = c("Predictor", "Model", "Effect (%)", "Lower CI", "Upper CI", "P-value"), digits = 2)
 ```
 
 ```{r beta_simple_diagnostics, eval = FALSE}
-plot(beta_simple, which = 1:4,
-     caption = c("Residuals vs indices of obs.", "Cook's distance plot",
-                 "Generalized leverage vs predicted values", "Residuals vs linear predictor"),
-     main = "") # does not look like it pass the tests ahhh
+plot(beta_simple, which = 1:4) # does not look like it pass the tests?
 
 ```
 
 ```{r beta_full_diagnostics, eval = FALSE}
-plot(beta_full, which = 1:4,
-     caption = c("Residuals vs indices of obs.", "Cook's distance plot",
-                 "Generalized leverage vs predicted values", "Residuals vs linear predictor"),
-     main = "") # multicollinearity issues
+plot(beta_full, which = 1:4) # multicollinearity issues
 
 predictors <- data_2025 |> 
   select(names(pretty_labels))
@@ -346,6 +349,7 @@ corrplot(cor_matrix,
          number.cex = .5)
 
 #TODO: Identify highly correlated pairs, to decide  which variables to remove consider keeping the one that’s more interpretable or more strongly linked to the outcome idk ahhh
+# i think removing insuffiencet sleep and income fixed it??
 ```
 
 ## Recommendations
@@ -356,21 +360,4 @@ corrplot(cor_matrix,
 
 -   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
 
-## Appendix
 
-```{r}
-library(kableExtra)
-
-margin_df |> 
-  select(factor, model, AME_percent, Lower, Upper, p) |>
-  kable(col.names = c("Predictor", "Model", "Effect (%)", "Lower CI", "Upper CI", "P-value"), digits = 2, format = "html") |>
-  kable_styling("hover", full_width = FALSE)
-```
-
-## Appendix
-
-TODO:
-
--   Add individual factors relationship with obesity rate scatter plots maybe
-
--   Beta regression diagnostic plots

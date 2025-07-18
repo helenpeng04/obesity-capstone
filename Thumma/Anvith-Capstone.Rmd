@@ -24,58 +24,52 @@ library(ppcor)
 ```
 
 ```{r}
+
+
 data_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2025_CHRD.xlsx', sheet = "Additional Measure Data", skip = 1)
 
 food_index_2025 <- read_excel('/Users/anviththumma/Desktop/UHG-Summer-2025/Capstone/UHG/CMUobesitycapstone/2025_CHRD.xlsx', sheet = "Select Measure Data", skip = 1)
 
+
 ```
 
 ```{r}
-food_index_2025 <- food_index_2025 |> 
-  select(FIPS, 
-         `% Unemployed`,
-         `% Completed High School`,
-         `% Some College`,
-         `Food Environment Index`,
-         `% Severe Housing Problems`
-  ) |> 
-  janitor::clean_names() 
-
-
 data_2025 <- data_2025 |> 
-  select(FIPS, State, County, Population, 
-         `% Rural`,
+  dplyr::select(FIPS, State, County,
          `Median Household Income`,
          `Days above 90F`,
          `% with access to parks`,
-         `Traffic Volume`,
          `% Physically Inactive`,
          `% Adults with Obesity`
   ) |> 
   janitor::clean_names() 
 
+food_index_2025 <- food_index_2025 |> 
+  dplyr::select(FIPS, 
+         `% Unemployed`,
+         `% Completed High School`,
+         `% Some College`,
+         `Food Environment Index`
+  ) |> 
+  janitor::clean_names() 
+
 data_2025 <- merge(data_2025, food_index_2025, by = "fips")
-rm(food_index_2025)
+```
+
+```{r}
+
+# for the counties with missing food-environment index we replaced it with the statewide avg
+# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
 
 old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
-missing_data <- data_2025 |> 
- filter((is.na(percent_adults_with_obesity) |
-          is.na(percent_physically_inactive) |
-          is.na(food_environment_index)) &
-         !is.na(fips) &
-         !(fips %in% old_ct_fips)) |> 
-  select(fips, state, county, percent_adults_with_obesity, percent_physically_inactive, food_environment_index) 
-
-# for the counties with missing food-environment index we replaced it with the statewide avg. Note that Connecticut is the main reason why we decided to do this instead of a complete case analysis. We only have a statewide food environment index for CT, if we did a complete case analysis we would have to remove the entirety of CT from our analysis. 
-
-# when county = na that is statewide so i need to somehow get the food index from that and then place it into food environment index for counties that are missing that ahh
 
 statewide_food_index <- data_2025 |> 
   filter(is.na(county) & !is.na(food_environment_index)) |> 
-  select(state, food_environment_index) |> 
+  dplyr::select(state, food_environment_index) |> 
   rename(statewide_food_environment_index = food_environment_index)
 
 data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
   left_join(statewide_food_index, by = "state") |> 
   mutate(
     food_environment_index = if_else(
@@ -84,8 +78,9 @@ data_2025 <- data_2025 |>
       food_environment_index
     )
   ) |> 
-  select(-statewide_food_environment_index) |> 
-  filter(!is.na(county))
+  dplyr::select(-statewide_food_environment_index) |> 
+  filter(!is.na(county)) |> 
+  filter(!is.na(percent_adults_with_obesity))
 ```
 
 ```{r}
@@ -141,8 +136,6 @@ p2 <- data_2025 |>
   theme_minimal()
 
 
-
-
 p1 + p2
 ```
 
@@ -154,7 +147,7 @@ cor(data_2025$inactivity, data_2025$food_index, use = "complete.obs")
 
 ```{r}
 numeric_data <- data_2025 |>
-  select(where(is.numeric)) |>
+  dplyr::select(where(is.numeric)) |>
   na.omit()
 
 
@@ -181,7 +174,7 @@ corrplot(cor_matrix,
 
 # Reshape data for faceting
 env_plot_data <- data_2025 |>
-  select(obesity, 
+  dplyr::select(obesity, 
          food_index, 
          percent_with_access_to_parks, 
          traffic_volume, 

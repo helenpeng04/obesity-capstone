@@ -135,10 +135,14 @@ physical_obesity_plot + food_obesity_plot
 
 ```{r obesity_map}
 library(usmap)
+library(viridis)
+library(ggplot2)
 
+# Create quantile breaks
 q_brks <- floor(quantile(data_2025$percent_adults_with_obesity, probs = seq(0, 1, length.out = 5), na.rm = TRUE))
 
-plot_usmap( data = data_2025, values = "percent_adults_with_obesity", color = NA) +
+# Plot map
+plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA) +
   scale_fill_viridis_c(
     option = "plasma",
     direction = -1, 
@@ -149,8 +153,8 @@ plot_usmap( data = data_2025, values = "percent_adults_with_obesity", color = NA
   ) +
   theme(
     legend.position = "left",
-    legend.title = element_text(face = "bold")
-  )
+    legend.title = element_text(face = "bold"),
+  ) 
 ```
 
 ## Clustering U.S. Counties by Obesity, Food Access, and Inactivity
@@ -267,97 +271,128 @@ vip(top_vi, aesthetics = list(fill = "steelblue")) +
 #TODO: how to decide how many variables to use in our beta regression because I just arbitarily chose 10 variables for this plot
 ```
 
-## Beta Models
+## Linear Regression Model (Obesity)
 
-```{r beta_models}
-library(betareg)
-library(margins)
+```{r linear_models}
+library(MASS)
 
-
-# lm_simple <- glm(percent_adults_with_obesity ~ food_environment_index + percent_physically_inactive, data = data_2025)
-# summary(lm_simple)
-# plot(lm_simple, which = 1:4)
-
-data_2025 <- data_2025 |>
-  mutate(obesity_prop = percent_adults_with_obesity / 100)
-
-beta_simple <- betareg(obesity_prop ~ food_environment_index + percent_physically_inactive, data = data_2025, link = "logit")
-beta_full <- betareg(obesity_prop ~ percent_physically_inactive + median_household_income + 
-                      percent_adults_reporting_currently_smoking + percent_excessive_drinking + 
-                      percent_below_18_years_of_age + percent_insufficient_sleep + 
-                      school_funding_adequacy + percent_households_with_severe_cost_burden + 
-                      percent_uninsured_adults + traffic_volume + food_environment_index, link = "logit",
-                    data = data_2025)
-
-me_simple <- margins(beta_simple)
-me_full <- margins(beta_full)
-
-df_simple <- summary(me_simple)
-df_simple$model <- "Simple Model"
-df_full <- summary(me_full)
-df_full$model <- "Full Model"
-
-margin_df <- rbind(df_simple, df_full)
-
-margin_df <- margin_df |> 
+data_2025 <- data_2025 |> 
   mutate(
-    AME_percent = AME * 100,
-    Lower = lower * 100,
-    Upper = upper * 100,
-    signif = ifelse(p < 0.01, 1, 0),
-    factor = ifelse(factor %in% names(pretty_labels), 
-                         pretty_labels[factor], 
-                         factor)
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
   )
 
-ggplot(margin_df, aes(x = reorder(factor, AME_percent), y = AME_percent, color = model)) +
-  geom_point(position = position_dodge(width = 0.5), size = 1) +
-  geom_errorbar(aes(ymin = Lower, ymax = Upper), 
-                width = 0.2, position = position_dodge(width = 0.6)) +
-  coord_flip() +
-  labs(
-    x = "Predictor",
-    y = "Effect on Obesity Rate (%)",
-    color = "Model"
-  ) 
+lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
 
-# margin_df |> 
-#   select(factor, model, AME_percent, Lower, Upper, p) |>
-#   kable(col.names = c("Predictor", "Model", "Effect (%)", "Lower CI", "Upper CI", "P-value"), digits = 2)
+summary(lm_simple)
+# plot(lm_simple) -> Moved to appendix
+
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+
+summary(huber_model)
+# Need to justify this over lm_simple
 ```
 
-```{r beta_simple_diagnostics, eval = FALSE}
-plot(beta_full, which = 1:4) # does not look like it pass the tests?
+## Food Environment Index appears to be a confounding variable
+
+```{r}
+# Clean data
+set.seed(10)
+data_2025 <- data_2025 |> na.omit()
+
+tree_fei <- train(food_environment_index ~ . - fips - state - county - cluster,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
+
+# Top 10 predictors of FEI
+top_vi_fei <- head(vi(tree_fei), 10)
+
+
+top_vi_fei$Variable <- ifelse(
+  top_vi_fei$Variable %in% names(pretty_labels_fei),
+  pretty_labels_fei[top_vi_fei$Variable],
+  top_vi_fei$Variable
+)
+
+vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
 
 ```
 
-```{r beta_full_diagnostics, eval = FALSE}
-plot(beta_full, which = 1:4) # multicollinearity issues
+```{r, eval=FALSE}
+summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
 
-predictors <- data_2025 |> 
-  select(names(pretty_labels))
+summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
-library(corrplot)
-cor_matrix <- cor(predictors, use = "complete.obs")
-rownames(cor_matrix) <- pretty_labels[rownames(cor_matrix)]
-colnames(cor_matrix) <- pretty_labels[colnames(cor_matrix)]
+summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
-corrplot(cor_matrix, 
-         method = "color", 
-         type = "upper", 
-         tl.cex = 0.6, 
-         tl.col = "black",
-         addCoef.col = "black", 
-         number.cex = .5)
-
-#TODO: Identify highly correlated pairs, to decide  which variables to remove consider keeping the one that’s more interpretable or more strongly linked to the outcome idk ahhh
-# i think removing insuffiencet sleep and income fixed it??
 ```
+
+### Summary
+
+During our exploratory data analysis (EDA), we observed that the **Food Environment Index (FEI)** had an inverse relationship with obesity — suggesting that counties with better food environments tend to have lower obesity rates. However, when we modeled this relationship using linear regression, the results became inconsistent. In one model, FEI appeared to be a strong negative predictor of obesity, but once we added its key components — **percent food insecure** and **percent with limited access to healthy foods** — FEI became statistically insignificant. This indicates that FEI is a **confounded composite variable**, meaning its apparent effect on obesity is actually driven by the variables that make up the index. Because of this, FEI is not a reliable standalone predictor of obesity.
+
+To understand what drives FEI and explore its confounding nature, I built a decision tree to identify the top predictors of FEI. The two most influential variables were **% food insecure** and **% with limited access to healthy foods**. I then ran a new model including these two variables along with **% physically inactive**, a variable already shown to be a strong predictor of obesity. In this final model, **physical inactivity remained highly significant**, **limited access to healthy food was not significant**, and **food insecurity showed a significant but unexpected negative association** with obesity. These findings suggest that it is more effective to use **specific, interpretable variables** related to food access rather than relying on an aggregated index like FEI. This approach provides clearer insights into the factors influencing obesity at the county level and helps guide more targeted recommendations.
+
+**Overall Key Takeaways:**
+
+-   **Physical inactivity** is the strongest and most consistent predictor of obesity.
+
+-   **% Food insecure** becomes a significant (negative) predictor once we control for physical inactivity and drop FEI.
+
+-   **% Limited access to healthy food** is not significant in any specification we tested.
+
+-   Relying on the FEI alone is misleading because its signal disappears once key components (and physical inactivity) are included.
 
 ## Recommendations
 
--   Prioritize the young population by targeting environments that shape long-term health behaviors early in life.
+### Invest in Built Environments That Promote Daily Physical Activity
 
--   Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.
+-   **TO DO:**
 
--   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
+    -   Improve sidewalk infrastructure in neighborhoods with high inactivity and obesity rates.
+
+    -   Add bike lanes, trails, and etc
+
+    -   Zone for mixed-use neighborhoods to encourage walkable errands.
+
+-   **Real-world example**:
+
+    -   **Minneapolis, MN** implemented "Complete Streets" policies
+
+        -   Street design policy that supports walking, biking, transit, and driving
+
+        -   Includes sidewalks, bike lanes, crosswalks, lighting, and traffic calming
+
+        -   Makes daily physical activity safer and more accessible
+
+    -   **Safe Routes to School** programs in **California**
+
+        -   National program to help students walk or bike safely to school
+
+        -   Improves sidewalks, crosswalks, signage, and adds crossing guards
+
+        -   Helps form lifelong physical activity habits starting in childhood
+
+### Deploy Mobile Markets and Pop-Up Grocery Stands in High-Need Areas
+
+-   **TO DO:**
+
+    -   Use mobile grocery vans or pop-up farmers' markets in areas that lack supermarkets
+
+    -   Accept **SNAP/WIC** benefits and keep prices affordable
+
+        -   SNAP is essentially food stamps
+
+        -   WIC is federal assistance for pregnant women, new mothers, and children under 5. Provides vouchers for nutritious foods, baby formula, and health care referrals and nutrition education
+
+    -   Pair markets with cooking demonstrations or physical activity events
+
+-   **Real-world example**:
+
+    -   **Veggie Van (North Carolina)** brings produce into underserved neighborhoods and has partnered with local health departments
+
+    -   **Fresh Moves Mobile Market (Chicago)** operates a bus converted into a traveling produce market for low-access communities

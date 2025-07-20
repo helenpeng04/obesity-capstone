@@ -1,36 +1,30 @@
 ---
-title: "Mapping Obesity: A County-Level Analysis"
-subtitle: "Does physical inactivity level and access to healthy food affect obesity rate?"
-author: |
-  <strong>Helen Peng</strong><br>
-  <em>Carnegie Mellon University</em><br>
-  <strong>Jordan Faustin</strong><br>
-  <em>Howard University</em><br>
-  <strong>Anvith Thumma</strong><br>
-  <em>Arizona State University</em>
+title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors"
+subtitle: "SURE 2025"
+author:
+  - "<strong>Helen Peng</strong><br><small>Carnegie Mellon University</small>"
+  - "<strong>Jordan Faustin</strong><br><small>Howard University</small>"
+  - "<strong>Anvith Thumma</strong><br><small>Arizona State University</small>"
 format: 
   revealjs:
-    theme: simple
+    theme: beige
     slide-number: true
     smaller: true
+    include-after-body: |
+      <style>
+        .reveal .slides section.title-slide {
+          text-align: center;
+        }
+        .reveal .slides section.title-slide .author p {
+          margin: 1em 0;
+          line-height: 1.5;
+        }
+      </style>
 editor: visual
 ---
 
-## Agenda
--   **Problem**
--   **Significance**
--   **Data Overview**
--   **Scatter Analysis**
--   **Percentage Distribution**
--   **Predictor Analysis**
--   **Regression Model**
--   **Model Comparison**
--   **Recommendations**
--   **Appendix**
 
-## Introduction
-
-Does physical inactivity level and access to healthy food affect obesity rate at the county level?
+## Does physical inactivity level and access to healthy food affect obesity rate at the county level? {.center}
 
 
 ## Why This Question is Important
@@ -43,6 +37,19 @@ Physical Inactivity and food access are modifiable factors linked to obesity. In
 
 -   **Policy and Community Planning:** 
 New information made through findings can inform policies like urban planning, subsidizing healthy food retailers in under-served areas, school/workplace wellness programs.
+
+
+## Agenda
+
+-   **Data Overview**
+-   **Initial Analysis**
+-   **Percentage Distribution**
+-   **Predictor Analysis**
+-   **Regression Model**
+-   **Model Comparison**
+-   **Recommendations**
+-   **Appendix**
+
 
 ## Data Overview
 
@@ -134,14 +141,14 @@ data_2025 <- data_2025 |>
   filter(!is.na(percent_adults_with_obesity))
 ```
 
-## As physical inactivity increases obesity rates increases and as access to healthy food increases obesity rates decreases.
+## There is a positive correlation between physical inactivity and obesity rates, and a negative correlation between healthy food access
 
 ```{r scatterplot}
 library(patchwork)
 
 physical_obesity_plot <- data_2025 |>
   ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
-  geom_point(alpha = 0.2) +
+  geom_point(alpha = 0.7) +
   geom_smooth(method = "gam", se = FALSE) +
   labs(
     x = "% Physically Inactive",
@@ -151,7 +158,7 @@ physical_obesity_plot <- data_2025 |>
 
 food_obesity_plot <- data_2025 |>
   ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
-  geom_point(alpha = 0.2) +
+  geom_point(alpha = 0.7) +
   geom_smooth(method = "gam", se = FALSE) +
   labs(
     x = "Food Environment Index (0 = worst, 10 = best)",
@@ -162,7 +169,7 @@ food_obesity_plot <- data_2025 |>
 physical_obesity_plot + food_obesity_plot 
 ```
 
-## Obesity rates are consistently higher in the Midwest and the South compared to the West Coast and the Northeast.
+## CDC data confirms obesity rates are significantly higher in the Midwest and South compared to the Northeast and West
 
 ```{r obesity_map}
 library(usmap)
@@ -197,6 +204,10 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
   )
 ```
 
+## Fuel or Fire (CART)
+- **We understand that there are correlations between obesity rates, physical inactivity, and healthy food environments. Now we to confirm whether we're looking at the "Fuel" or the "Fire" of the situation**
+- **Importance behind this process is that it assists us with targeting the root cause**
+
 ## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
 
 ```{r vip}
@@ -226,7 +237,8 @@ pretty_labels <- c(
   "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
   "percent_uninsured_adults" = "Uninsured Adults",
   "traffic_volume" = "Traffic Volume",
-  "food_environment_index" = "Food Environment Index"
+  "food_environment_index" = "Food Environment Index",
+  "percent_uninsured" = "Uninsured"
 )
 
 top_vi$Variable <- ifelse(

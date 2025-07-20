@@ -38,7 +38,7 @@ editor: visual
 -   **Data Overview**
 -   **Initial Analysis**
 -   **Understanding Direction**
--   **Modeling and Comparision**
+-   **Modeling and Comparison**
 -   **Discussion**
 -   **Recommendations**
 -   **Appendix**
@@ -198,7 +198,49 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
 
 <!-- -   **Importance behind this process is that it assists us with targeting the root cause** -->
 
+## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
 
+```{r vip}
+
+# CART-algorthim regression tree 10 fold CV
+library(caret)
+library(vip)
+
+set.seed(10)
+data_2025 <- data_2025 |> na.omit()
+
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
+
+top_vi <- head(vi(tree), 15)
+
+pretty_labels <- c(
+  "percent_physically_inactive" = "Physically Inactive",
+  "median_household_income" = "Median Household Income",
+  "percent_adults_reporting_currently_smoking" = "Smoking",
+  "percent_excessive_drinking" = "Excessive Drinking",
+  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
+  "percent_insufficient_sleep" = "Insufficient Sleep",
+  "school_funding_adequacy" = "School Funding Adequacy",
+  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
+  "percent_uninsured_adults" = "Uninsured Adults",
+  "traffic_volume" = "Traffic Volume",
+  "food_environment_index" = "Food Environment Index",
+  "percent_uninsured" = "Uninsured Adults"
+)
+
+top_vi$Variable <- ifelse(
+  top_vi$Variable %in% names(pretty_labels),
+  pretty_labels[top_vi$Variable],
+  top_vi$Variable
+)
+
+vip(top_vi, aesthetics = list(fill = "steelblue")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
+
+```
 ## Modeling and Comparison
 
 ```{r bivariate_model}
@@ -256,51 +298,6 @@ model_comparison |>
                   "R-squared", "Residual SE"),
     caption = "Comparison of Linear and Huber Robust Models for Obesity Prediction"
   )
-```
-
-
-## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
-
-```{r vip}
-
-# CART-algorthim regression tree 10 fold CV
-library(caret)
-library(vip)
-
-set.seed(10)
-data_2025 <- data_2025 |> na.omit()
-
-tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
-
-top_vi <- head(vi(tree), 15)
-
-pretty_labels <- c(
-  "percent_physically_inactive" = "Physically Inactive",
-  "median_household_income" = "Median Household Income",
-  "percent_adults_reporting_currently_smoking" = "Smoking",
-  "percent_excessive_drinking" = "Excessive Drinking",
-  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
-  "percent_insufficient_sleep" = "Insufficient Sleep",
-  "school_funding_adequacy" = "School Funding Adequacy",
-  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
-  "percent_uninsured_adults" = "Uninsured Adults",
-  "traffic_volume" = "Traffic Volume",
-  "food_environment_index" = "Food Environment Index",
-  "percent_uninsured" = "Uninsured Adults"
-)
-
-top_vi$Variable <- ifelse(
-  top_vi$Variable %in% names(pretty_labels),
-  pretty_labels[top_vi$Variable],
-  top_vi$Variable
-)
-
-vip(top_vi, aesthetics = list(fill = "steelblue")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
 ```
 
 ## Food Environment Index appears to be a confounding variable
@@ -365,12 +362,12 @@ summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_
 
 #### Prioritize Physical Activity Infrastructure
 
--   Build Walkable Communities by expanding sidewalks, bike lanes, and trails in high-obesity counties
--   Target Schools with funding Safe Routes to School programs to improve sidewalks, crosswalks, and safety patrols.
+-   Building walkable Communities (expanding sidewalks, bike lanes, and trails in high-obesity counties)
+-   Funding Safe Routes to School programs to improve sidewalks, crosswalks, and safety patrols.
 
 #### Improve Food Access with Targeted Interventions
 
--   Deploying Mobile Food Solutions by launching produce vans (e.g., Veggie Van in NC) in food deserts. and hosting pop-up markets at schools, clinics, or transit hubs paired with nutrition workshops.
+-   Deploying Mobile Food Solutions such as produce vans (e.g., Veggie Van in NC) in food deserts. and hosting pop-up markets paired with nutrition workshops.
 
 #### Redirecting Funding
 
@@ -378,11 +375,11 @@ summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_
 
 ## Possible Future Work
 
--   Verifying the count of parks and wellness centers per county
+-   Establishing a count of parks and wellness centers per county
 
--   Map their respective distance and location
+-   Mapping their respective distance and location
 
--   Check for trends on when individuals are going to the fitness locations
+-   Checking for trends on when individuals are going to the fitness locations
 
 ## Thank You {.center}
 

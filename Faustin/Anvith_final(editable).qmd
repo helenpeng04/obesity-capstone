@@ -311,24 +311,40 @@ summary(huber_model)
 set.seed(10)
 data_2025 <- data_2025 |> na.omit()
 
+# Train the model
 tree_fei <- train(food_environment_index ~ . - fips - state - county - cluster,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
+                  method = "rpart", tuneLength = 20,
+                  trControl = trainControl(method = "cv", number = 10),
+                  data = data_2025)
 
-# Top 10 predictors of FEI
+# Define pretty labels for FEI predictors
+pretty_labels_fei <- c(
+  "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)",
+  "percent_food_insecure" = "Food Insecurity (%)",
+  "median_household_income" = "Median Household Income",
+  "number_limited_access_to_healthy_foods" = "Count of Limited Access Areas",
+  "average_number_of_physically_unhealthy_days" = "Avg. Physically Unhealthy Days",
+  "percent_children_in_poverty" = "Children in Poverty (%)",
+  "percent_frequent_physical_distress" = "Frequent Physical Distress (%)",
+  "percent_physically_inactive" = "Physically Inactive (%)",
+  "number_completed_high_school" = "High School Graduates",
+  "population_173" = "Population (Age 17-3)"
+)
+
+# Get top 10 predictors and apply labels
 top_vi_fei <- head(vi(tree_fei), 10)
-
-
 top_vi_fei$Variable <- ifelse(
   top_vi_fei$Variable %in% names(pretty_labels_fei),
   pretty_labels_fei[top_vi_fei$Variable],
   top_vi_fei$Variable
 )
 
+# Create the plot
+library(vip)
 vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
+  labs(y = "Variable Importance (Total Reduction in RSS)",
+       title = "Top Predictors of Food Environment Index") +
+  theme_minimal()
 ```
 
 ```{r, eval=FALSE}

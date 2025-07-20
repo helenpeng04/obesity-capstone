@@ -1,6 +1,13 @@
 ---
-title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors"
-author: Helen Peng (Carnegie Mellon University), Jordan Faustin (Howard University), Anvith Thumma (Arizona State University)
+title: "Mapping Obesity: A County-Level Analysis"
+subtitle: "Does physical inactivity level and access to healthy food affect obesity rate?"
+author: |
+  <strong>Helen Peng</strong><br>
+  <em>Carnegie Mellon University</em><br>
+  <strong>Jordan Faustin</strong><br>
+  <em>Howard University</em><br>
+  <strong>Anvith Thumma</strong><br>
+  <em>Arizona State University</em>
 format: 
   revealjs:
     theme: simple
@@ -8,29 +15,34 @@ format:
     smaller: true
 editor: visual
 ---
-## Introduction 
+
+## Agenda
+-   **Problem**
+-   **Significance**
+-   **Data Overview**
+-   **Scatter Analysis**
+-   **Percentage Distribution**
+-   **Predictor Analysis**
+-   **Regression Model**
+-   **Model Comparison**
+-   **Recommendations**
+-   **Appendix**
+
+## Introduction
 
 Does physical inactivity level and access to healthy food affect obesity rate at the county level?
 
-## Agenda
-
-- **Significance**
-- **Data Overview**
-- **Scatter Analysis**
-- **Percentage Distribution**
-- **Predictor Analysis**
-- **Regression Model**
-- **Model Comparison**
-- **Recommendations**
-- **Appendix**
 
 ## Why This Question is Important
 
--   **Public Health Implications:** Obesity is a major contributor to rising healthcare costs and chronic diseases such as diabetes, heart disease, and cancer.
+-   **Public Health Implications:** 
+Obesity is a major contributor to rising healthcare costs and chronic diseases such as diabetes, heart disease, and cancer.
 
--   **Social Factors of Health:** Physical Inactivity and food access are modifiable factors linked to obesity. In turn, studying their impact highlights how our environment and infrastructure, like parks, grocery stores, and schools, can shape our health outcomes.
+-   **Social Factors of Health:** 
+Physical Inactivity and food access are modifiable factors linked to obesity. In turn, studying their impact highlights how our environment and infrastructure, like parks, grocery stores, and schools, can shape our health outcomes.
 
--   **Policy and Community Planning:** New information made through findings can inform policies like urban planning, subsidizing healthy food retailers in under-served areas, school/workplace wellness programs. 
+-   **Policy and Community Planning:** 
+New information made through findings can inform policies like urban planning, subsidizing healthy food retailers in under-served areas, school/workplace wellness programs.
 
 ## Data Overview
 
@@ -45,10 +57,10 @@ Does physical inactivity level and access to healthy food affect obesity rate at
     -   Food Environment Index (1-10) - Higher is Better
 
     -   State and County Identifiers
+
+    -   Days above 90°F
     
-    - Days above 90°F
-    
-    _ Access to Parks
+    -   Access to Parks
 
 -   **Handling Missing Data:**
 
@@ -188,90 +200,44 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
 ## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
 
 ```{r vip}
-# Enhanced CART-algorithm regression tree with 10-fold CV
+
+# CART-algorthim regression tree 10 fold CV
 library(caret)
 library(vip)
-library(rpart)       # For direct access to rpart functions
-library(ggplot2)     # Enhanced plotting
-library(dplyr)       # For data manipulation
 
 set.seed(10)
+data_2025 <- data_2025 |> na.omit()
 
-# Improved data handling - consider alternative to na.omit()
-data_2025_clean <- data_2025 %>% 
-  select(-fips, -state, -county) %>%  # Remove ID columns upfront
-  na.omit() %>%                      # Still using na.omit but more controlled
-  mutate(across(where(is.character), as.factor))  # Convert chars to factors
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
 
-# Define more controlled tuning grid
-tune_grid <- expand.grid(
-  cp = seq(0.001, 0.1, length.out = 20)  # More focused cp range
+top_vi <- head(vi(tree), 15)
 
-# Enhanced train control with additional options
-ctrl <- trainControl(
-  method = "cv",
-  number = 10,
-  savePredictions = "final",
-  selectionFunction = "best"
-)
-
-# Train model with additional parameters
-tree <- train(
-  percent_adults_with_obesity ~ .,
-  data = data_2025_clean,
-  method = "rpart",
-  tuneGrid = tune_grid,
-  trControl = ctrl,
-  metric = "RMSE",          # Explicit optimization metric
-  maximize = FALSE,         # For RMSE we want to minimize
-  control = rpart.control(
-    minsplit = 20,          # Minimum observations to split
-    minbucket = 7,          # Minimum observations in terminal node
-    maxdepth = 10           # Maximum tree depth
-  )
-)
-
-# Model evaluation
-print(tree)
-ggplot(tree) + ggtitle("Model Tuning Performance")
-plot(tree$finalModel)
-text(tree$finalModel, cex = 0.8, use.n = TRUE)
-
-# Variable importance with better handling
 pretty_labels <- c(
-  "percent_physically_inactive" = "Physical Inactivity",
-  "median_household_income" = "Median Income",
-  "percent_adults_reporting_currently_smoking" = "Smoking Prevalence",
+  "percent_physically_inactive" = "Physically Inactive",
+  "median_household_income" = "Median Household Income",
+  "percent_adults_reporting_currently_smoking" = "Smoking",
   "percent_excessive_drinking" = "Excessive Drinking",
-  "percent_below_18_years_of_age" = "Under 18 Population",
+  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
   "percent_insufficient_sleep" = "Insufficient Sleep",
-  "school_funding_adequacy" = "School Funding",
-  "percent_households_with_severe_cost_burden" = "Housing Cost Burden",
+  "school_funding_adequacy" = "School Funding Adequacy",
+  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
   "percent_uninsured_adults" = "Uninsured Adults",
   "traffic_volume" = "Traffic Volume",
-  "food_environment_index" = "Food Environment"
+  "food_environment_index" = "Food Environment Index"
 )
 
-# Enhanced variable importance visualization
-var_imp <- vip::vi(tree) %>%
-  mutate(Variable = case_when(
-    Variable %in% names(pretty_labels) ~ pretty_labels[Variable],
-    TRUE ~ Variable
-  )) %>%
-  arrange(desc(Importance)) %>%
-  head(15)
+top_vi$Variable <- ifelse(
+  top_vi$Variable %in% names(pretty_labels),
+  pretty_labels[top_vi$Variable],
+  top_vi$Variable
+)
 
-ggplot(var_imp, aes(x = reorder(Variable, Importance), y = Importance)) +
-  geom_col(fill = "steelblue", alpha = 0.8) +
-  coord_flip() +
-  labs(
-    x = NULL,
-    y = "Variable Importance (Total Reduction in RSS)",
-    title = "Top Predictors of Adult Obesity Rates",
-    subtitle = "Based on CART Regression Tree Analysis"
-  ) +
-  theme_minimal() +
-  theme(plot.title = element_text(face = "bold"))
+vip(top_vi, aesthetics = list(fill = "steelblue")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
+
 ```
 
 ## Linear Regression Model

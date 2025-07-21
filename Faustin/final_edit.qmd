@@ -6,7 +6,8 @@ author:
   - "<strong>Jordan Faustin</strong><br><small>Howard University</small>"
   - "<strong>Anvith Thumma</strong><br><small>Arizona State University</small>"
 format: 
-  revealjs:
+  revealjs: 
+    embed-resources: true
     theme: serif
     slide-number: true
     smaller: true
@@ -23,15 +24,15 @@ format:
 editor: visual
 ---
 
-## Does physical inactivity level and access to healthy food affect obesity rate at the county level? {.center}
-
-## Why This Question is Important
+## Significance
 
 -   **Public Health Implications:** <br> Obesity is a major contributor to rising healthcare costs and chronic diseases such as diabetes, heart disease, and cancer.
 
--   **Social Factors of Health:** <br> Physical Inactivity and food access are modifiable factors linked to obesity. In turn, studying their impact highlights how our environment and infrastructure, like parks, grocery stores, and schools, can shape our health outcomes.
+-   **Social Factors of Health:** <br> Physical Inactivity and food access are modifiable factors linked to obesity. In turn, studying their impact can highlight how our environment and infrastructure, like our parks, grocery stores, and schools, can shape our health outcomes.
 
--   **Policy and Community Planning:** <br> New information made through findings can inform policies like urban planning, subsidizing healthy food retailers in under-served areas, school/workplace wellness programs.
+-   **Policy and Community Planning:** <br> New information revealed through findings can help to make informed policies for urban planning in under-served areas and school/workplace wellness programs.
+
+## Does physical inactivity level and access to healthy food affect obesity rate at the county level? {.center}
 
 ## Agenda
 
@@ -131,7 +132,7 @@ data_2025 <- data_2025 |>
   filter(!is.na(percent_adults_with_obesity))
 ```
 
-## As physical inactivity increases obesity rates increase as well, and as access to healthy food increase obesity rates start to decline
+## As physical inactivity increases obesity rates increase as well, and as access to healthy food increase obesity rates start to decline {.smaller}
 
 ```{r scatterplot}
 library(patchwork)
@@ -157,7 +158,7 @@ food_obesity_plot <- data_2025 |>
 physical_obesity_plot + food_obesity_plot 
 ```
 
-## Obesity rates are significantly higher in the Midwest and South compared to the Northeast and West
+## Obesity rates are notable higher in the Midwest and South compared to the Northeast and West {.smaller}
 
 ```{r obesity_map}
 library(usmap)
@@ -192,55 +193,36 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
   )
 ```
 
-# Fuel or Fire {.center}
+## Fuel or Fire {.center}
 
-<!-- -   **We understand that there are correlations between obesity rates, physical inactivity, and healthy food environments. Now we to confirm whether we're looking at the "Fuel" or the "Fire" of the situation** -->
+There is a relationship between obesity rates, physical inactivity, and healthy food environments. Now we want to confirm whether we're looking at the "Fuel" or the "Fire" of the situation. Reasoning behind this process is to clarify that we are targeting a driver and not a symptom.
 
-<!-- -   **Importance behind this process is that it assists us with targeting the root cause** -->
+## As physical inactivity increases obesity rates increase as well, and as access to healthy food increase obesity rates start to decline {.smaller}
 
-## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
+```{r scatterplot}
+library(patchwork)
 
-```{r vip}
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) 
 
-# CART-algorthim regression tree 10 fold CV
-library(caret)
-library(vip)
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) 
 
-set.seed(10)
-data_2025 <- data_2025 |> na.omit()
-
-tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
-
-top_vi <- head(vi(tree), 15)
-
-pretty_labels <- c(
-  "percent_physically_inactive" = "Physically Inactive",
-  "median_household_income" = "Median Household Income",
-  "percent_adults_reporting_currently_smoking" = "Smoking",
-  "percent_excessive_drinking" = "Excessive Drinking",
-  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
-  "percent_insufficient_sleep" = "Insufficient Sleep",
-  "school_funding_adequacy" = "School Funding Adequacy",
-  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
-  "percent_uninsured_adults" = "Uninsured Adults",
-  "traffic_volume" = "Traffic Volume",
-  "food_environment_index" = "Food Environment Index",
-  "percent_uninsured" = "Uninsured Adults"
-)
-
-top_vi$Variable <- ifelse(
-  top_vi$Variable %in% names(pretty_labels),
-  pretty_labels[top_vi$Variable],
-  top_vi$Variable
-)
-
-vip(top_vi, aesthetics = list(fill = "steelblue")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
+physical_obesity_plot + food_obesity_plot 
 ```
+
 ## Modeling and Comparison
 
 ```{r bivariate_model}
@@ -249,17 +231,17 @@ library(MASS)
 library(knitr)
 
 # Prepare data and fit models
-data_2025 <- data_2025 |> 
+model_data_2025 <- data_2025 |> 
   mutate(
     obesity_prop = percent_adults_with_obesity / 100,
     logit_obesity = log(obesity_prop / (1 - obesity_prop))
   )
 
 lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
-    data = data_2025)
+    data = model_data_2025)
 
 huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
-    data = data_2025)
+    data = model_data_2025)
 
 # Create model comparison table
 model_comparison <- data.frame(
@@ -298,54 +280,6 @@ model_comparison |>
                   "R-squared", "Residual SE"),
     caption = "Comparison of Linear and Huber Robust Models for Obesity Prediction"
   )
-```
-
-## Food Environment Index appears to be a confounding variable
-
-```{r}
-# Clean data
-set.seed(10)
-data_2025 <- data_2025 |> na.omit()
-
-tree_fei <- train(food_environment_index ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
-
-# Top 10 predictors of FEI
-top_vi_fei <- head(vi(tree_fei), 10)
-
-pretty_labels_fei <- c(
-  "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)",
-  "percent_food_insecure" = "Food Insecurity (%)",
-  "median_household_income" = "Median Household Income",
-  "percent_children_in_poverty" = "Children in Poverty (%)",
-  "number_limited_access_to_healthy_foods" = "Number with Limited Access to Healthy Foods",
-  "average_number_of_physically_unhealthy_days" = "Avg. Physically Unhealthy Days",
-  "percent_frequent_physical_distress" = "Frequent Physical Distress (%)",
-  "percent_physically_inactive" = "Physically Inactive (%)",
-  "number_completed_high_school" = "Completed High School",
-  "population_173" = "Population "
-)
-
-top_vi_fei$Variable <- ifelse(
-  top_vi_fei$Variable %in% names(pretty_labels_fei),
-  pretty_labels_fei[top_vi_fei$Variable],
-  top_vi_fei$Variable
-)
-
-vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
-```
-
-```{r, eval=FALSE}
-summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
-
-summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
-
-summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
-
 ```
 
 ## Key Takeaways
@@ -390,3 +324,143 @@ summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_
 -   Correlation Matrix
 -   Diagnostic Plots for Linear Regression Models
 -   
+
+```{r linear model}
+# Transform obesity to logit scale (as shown in slides)
+data_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+lm_base <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+              data = data_2025)
+
+library(MASS)
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+                   data = data_2025)
+
+lm_expanded <- lm(logit_obesity ~ percent_physically_inactive + 
+                  percent_limited_access_to_healthy_foods + 
+                  percent_food_insecure,
+                data = data_2025)
+
+# Compare models
+library(broom)
+library(knitr)
+
+model_comparison <- list(
+  "Base Model" = tidy(lm_base),
+  "Huber Robust" = tidy(huber_model),
+  "Expanded Model" = tidy(lm_expanded)
+)
+
+kable(model_comparison, digits = 4, 
+      caption = "Comparison of Obesity Prediction Models")
+
+# Check assumptions
+par(mfrow = c(2, 2))
+plot(lm_base)
+
+# Check for multicollinearity
+car::vif(lm_expanded)
+
+# Check residual distribution
+ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
+  stat_qq() + stat_qq_line()
+```
+
+<!-- 1. Residuals vs. Fitted Values Plot -->
+<!-- X-axis: Fitted Values (Predicted Obesity Rates) -->
+<!-- Y-axis: Residuals (Actual - Predicted Obesity Rates) -->
+
+<!-- What it checks: -->
+
+<!-- Whether your model misses patterns (non-linearity) -->
+
+<!-- If residuals have constant variance (homoscedasticity) -->
+
+<!-- Good: -->
+
+<!-- Points randomly scattered around zero (like a cloud) -->
+
+<!-- No obvious curves or funnels -->
+
+<!-- Bad: -->
+
+<!-- U-shaped curve → Missing a non-linear term (e.g., maybe inactivity only affects obesity above a certain threshold) -->
+
+<!-- Funnel shape → Variance changes with predictions (e.g., obesity harder to predict in very urban counties) -->
+
+<!-- For obesity study: -->
+<!-- If high-obesity counties (right side) have bigger residuals, maybe the model works better for average counties than extreme ones. -->
+
+<!-- 2. Q-Q Plot (Theoretical Quantiles vs. Standardized Residuals) -->
+<!-- X-axis: Theoretical Normal Quantiles (Expected pattern if normal) -->
+<!-- Y-axis: Standardized Residuals (Actual errors, scaled) -->
+
+<!-- What it checks: -->
+
+<!-- Whether residuals follow a normal distribution -->
+
+<!-- Good: -->
+
+<!-- Points follow the straight diagonal line -->
+
+<!-- Bad: -->
+
+<!-- S-curve → Heavy tails (extreme outliers) -->
+
+<!-- Flat middle → Too many average errors -->
+
+<!-- Points veer off at ends → Extreme outliers -->
+
+<!-- For obesity study: -->
+<!-- If tails bend up, your model underestimates obesity in the worst counties. If bends down, it overestimates. -->
+
+<!-- 3. Scale-Location Plot (Fitted Values vs. √Standardized Residuals) -->
+<!-- X-axis: Fitted Values (Predicted Obesity Rates) -->
+<!-- Y-axis: √|Standardized Residuals| (Square root of absolute errors) -->
+
+<!-- What it checks: -->
+
+<!-- Whether residual variance is consistent (homoscedasticity) -->
+
+<!-- Good: -->
+
+<!-- Flat red line (no trend in variance) -->
+
+<!-- Bad: -->
+
+<!-- Upward slope → More error as predictions increase (e.g., obesity harder to predict in high-obesity counties) -->
+
+<!-- Downward slope → Opposite issue -->
+
+<!-- For obesity study: -->
+<!-- If high-fitted values show more spread, consider transforming obesity rates or adding predictors for extreme counties. -->
+
+<!-- 4. Residuals vs. Leverage Plot (Leverage vs. Standardized Residuals) -->
+<!-- X-axis: Leverage (How unusual a county's predictors are) -->
+<!-- Y-axis: Standardized Residuals (How badly the model predicted it) -->
+
+<!-- What it checks: -->
+
+<!-- Influential outliers that distort the model -->
+
+<!-- Key terms: -->
+
+<!-- Leverage: Measures how extreme a county's predictors are (e.g., super high inactivity + low fast food) -->
+
+<!-- Cook’s Distance (red curves): Shows how much removing a county changes the model -->
+
+<!-- Danger zones: -->
+
+<!-- Top-right: High leverage + high residual (badly predicted unusual cases) -->
+
+<!-- Bottom-right: High leverage but well-predicted (pulls the model toward it) -->
+
+<!-- For obesity study: -->
+
+<!-- A wealthy county with bad food access but low obesity might sit here. -->
+
+<!-- Rural counties with unique trends could dominate the model unfairly. -->

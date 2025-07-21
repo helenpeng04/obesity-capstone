@@ -237,3 +237,96 @@ summary(huber_model)
 -   Correlation Matrix
 -   Diagnostic Plots for Linear Regression Models
 -   
+## Clustering U.S. Counties by Obesity, Food Access, and Inactivity
+
+```{r dendro, include = FALSE}
+library(ggdendro)
+
+cluster_data <- data_2025 |>
+  dplyr::select(fips,
+         state,
+         county,
+         percent_adults_with_obesity,
+         percent_physically_inactive,
+         food_environment_index) |> 
+  drop_na()
+
+std_data_features <- cluster_data |> 
+  dplyr::select(percent_adults_with_obesity, percent_physically_inactive, food_environment_index) |> 
+  scale()
+
+county_dist <- dist(std_data_features, method = "euclidean")
+hc_complete <- hclust(county_dist, method = "complete")
+
+ggdendrogram(hc_complete, labels = FALSE, leaf_labels = FALSE, theme_dendro = FALSE) +    labs(title = "Complete Linkage", y = "Dissimilarity") +
+  theme_minimal() +
+  theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      plot.title = element_text(size = 12, face = "bold"),
+      panel.grid = element_blank()
+  )
+```
+
+```{r clustering}
+library(knitr)
+library(usmap)
+library(ggplot2)
+
+data_with_clusters <- cluster_data |> 
+  mutate(cluster = as.factor(cutree(hc_complete, k = 4)))
+
+
+cluster_colors <- c(
+  "1" = "#4E79A7",  
+  "2" = "#F28E2B",  
+  "3" = "#E15759",  
+  "4" = "#76B7B2", 
+  "NA" = "gray90"   
+)
+cluster_labels <- c(
+  "1" = "High Risk (High Obesity/Poor Food Access)",
+  "2" = "Moderate-High Risk",
+  "3" = "Moderate-Low Risk", 
+  "4" = "Low Risk (Low Obesity/Good Food Access)"
+)
+
+plot_usmap(data = data_with_clusters, values = "cluster") +
+  scale_fill_manual(
+    values = cluster_colors,
+    name = "Obesity Risk Profile",
+    na.value = "gray90",
+    labels = cluster_labels
+  ) +
+  theme(
+    legend.position = "left",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.title = element_text(face = "bold")
+  )
+
+data_2025 <- data_2025 |> 
+  left_join(data_with_clusters |> dplyr::select(fips, cluster), by = "fips")
+
+
+```
+
+## Key Attributes of Each Cluster
+
+```{r}
+data_2025 |> 
+  filter(!is.na(cluster)) |> 
+  group_by(cluster) |> 
+  summarize(
+    `Cluster Size` = n(),
+    `Adults with Obesity (%)` = mean(percent_adults_with_obesity, na.rm = TRUE),
+    `Food Environment Index` = mean(food_environment_index, na.rm = TRUE),
+    `Physically Inactive (%)` = mean(percent_physically_inactive, na.rm = TRUE),
+    `Access To Parks (%)` = mean(percent_with_access_to_parks, na.rm = TRUE),
+    `Days Above 90F` = mean(days_above_90f, na.rm = TRUE),
+    .groups = "drop"
+  ) |> 
+  rename(`Cluster` = cluster) |> 
+  kable(digits = 2)
+```
+
+From the clustering, we see that most of the U.S. has low park access. We thought that improving park access could help reduce inactivity. But in hotter regions like Clusters 1 and 3 in the Southeast, indoor facilities should be prioritized because of the extreme heat. This is one recommendation, and more will come later.

@@ -172,92 +172,116 @@ Helen Peng, Anvith Thumma, and Jordan Faustin
 <h2>Obesity rates are consistently higher in the Midwest and the South compared to the West Coast and the Northeast.</h2>
 
 <img data-src="final-pres_files/figure-revealjs/obesity_map-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"></section>
-<section id="clustering-u.s.-counties-by-obesity-food-access-and-inactivity" class="slide level2">
-<h2>Clustering U.S. Counties by Obesity, Food Access, and Inactivity</h2>
-
-<img data-src="final-pres_files/figure-revealjs/clustering-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"></section>
-<section id="key-attributes-of-each-cluster" class="slide level2">
-<h2>Key Attributes of Each Cluster</h2>
-<div class="cell" data-layout-align="center">
-<div class="cell-output-display">
-<table class="caption-top">
-<colgroup>
-<col style="width: 6%">
-<col style="width: 10%">
-<col style="width: 18%">
-<col style="width: 18%">
-<col style="width: 18%">
-<col style="width: 15%">
-<col style="width: 11%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Cluster</th>
-<th style="text-align: right;">Cluster Size</th>
-<th style="text-align: right;">Adults with Obesity (%)</th>
-<th style="text-align: right;">Food Environment Index</th>
-<th style="text-align: right;">Physically Inactive (%)</th>
-<th style="text-align: right;">Access To Parks (%)</th>
-<th style="text-align: right;">Days Above 90F</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">1</td>
-<td style="text-align: right;">1645</td>
-<td style="text-align: right;">40.70</td>
-<td style="text-align: right;">6.97</td>
-<td style="text-align: right;">29.80</td>
-<td style="text-align: right;">20.09</td>
-<td style="text-align: right;">220.37</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">2</td>
-<td style="text-align: right;">1130</td>
-<td style="text-align: right;">35.98</td>
-<td style="text-align: right;">7.97</td>
-<td style="text-align: right;">23.24</td>
-<td style="text-align: right;">29.48</td>
-<td style="text-align: right;">138.92</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">3</td>
-<td style="text-align: right;">47</td>
-<td style="text-align: right;">42.37</td>
-<td style="text-align: right;">3.16</td>
-<td style="text-align: right;">34.72</td>
-<td style="text-align: right;">14.34</td>
-<td style="text-align: right;">266.71</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">4</td>
-<td style="text-align: right;">322</td>
-<td style="text-align: right;">29.74</td>
-<td style="text-align: right;">8.70</td>
-<td style="text-align: right;">18.75</td>
-<td style="text-align: right;">45.79</td>
-<td style="text-align: right;">90.81</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<p>From the clustering, we see that most of the U.S. has low park access. We thought that improving park access could help reduce inactivity. But in hotter regions like Clusters 1 and 3 in the Southeast, indoor facilities should be prioritized because of the extreme heat. This is one recommendation, and more will come later.</p>
-</section>
 <section id="surprisingly-the-food-environment-index-does-not-rank-among-the-top-predictors-of-county-level-obesity-rates." class="slide level2">
 <h2>Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] train-rmse:26.721271+0.027726   test-rmse:26.721922+0.302733 
+Multiple eval metrics are present. Will use test_rmse for early stopping.
+Will train until test_rmse hasn't improved in 10 rounds.
 
+[2] train-rmse:18.835047+0.020243   test-rmse:18.853828+0.241221 
+[3] train-rmse:13.333281+0.014519   test-rmse:13.372760+0.207601 
+[4] train-rmse:9.502497+0.009921    test-rmse:9.577665+0.170939 
+[5] train-rmse:6.845494+0.007426    test-rmse:6.962113+0.159328 
+[6] train-rmse:5.012291+0.007469    test-rmse:5.206668+0.132908 
+[7] train-rmse:3.759924+0.012623    test-rmse:4.063540+0.123431 
+[8] train-rmse:2.917820+0.011814    test-rmse:3.347753+0.114603 
+[9] train-rmse:2.360306+0.015337    test-rmse:2.922007+0.110498 
+[10]    train-rmse:1.992565+0.025688    test-rmse:2.683371+0.097790 
+[11]    train-rmse:1.751703+0.025015    test-rmse:2.540085+0.100169 
+[12]    train-rmse:1.581639+0.037127    test-rmse:2.461863+0.096569 
+[13]    train-rmse:1.471110+0.041436    test-rmse:2.429718+0.091541 
+[14]    train-rmse:1.388591+0.050331    test-rmse:2.409286+0.089806 
+[15]    train-rmse:1.311556+0.047617    test-rmse:2.404215+0.089652 
+[16]    train-rmse:1.263186+0.048739    test-rmse:2.400896+0.086390 
+[17]    train-rmse:1.219320+0.044108    test-rmse:2.396649+0.089693 
+[18]    train-rmse:1.162333+0.051894    test-rmse:2.395930+0.090251 
+[19]    train-rmse:1.118122+0.050217    test-rmse:2.394589+0.092655 
+[20]    train-rmse:1.074979+0.048775    test-rmse:2.395919+0.092239 
+[21]    train-rmse:1.037538+0.046170    test-rmse:2.398202+0.093687 
+[22]    train-rmse:1.007087+0.040825    test-rmse:2.397992+0.096029 
+[23]    train-rmse:0.971531+0.033371    test-rmse:2.400481+0.101662 
+[24]    train-rmse:0.936523+0.034684    test-rmse:2.403653+0.103039 
+[25]    train-rmse:0.907870+0.034247    test-rmse:2.401277+0.104586 
+[26]    train-rmse:0.878684+0.038417    test-rmse:2.402568+0.101985 
+[27]    train-rmse:0.844505+0.033387    test-rmse:2.401094+0.101487 
+[28]    train-rmse:0.819990+0.032941    test-rmse:2.401166+0.100043 
+[29]    train-rmse:0.799475+0.036064    test-rmse:2.403660+0.097880 
+Stopping. Best iteration:
+[19]    train-rmse:1.118122+0.050217    test-rmse:2.394589+0.092655</code></pre>
+</div>
+
+</div>
 <img data-src="final-pres_files/figure-revealjs/vip-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"></section>
-<section id="beta-models" class="slide level2">
-<h2>Beta Models</h2>
+<section id="linear-regression-model" class="slide level2">
+<h2>Linear Regression Model</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
 
-<img data-src="final-pres_files/figure-revealjs/beta_models-1.png" class="quarto-figure quarto-figure-center r-stretch" width="960"></section>
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.75721 -0.07708  0.00752  0.08352  0.45894 
+
+Coefficients:
+                              Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)                 -1.3849054  0.0456149 -30.361  &lt; 2e-16 ***
+food_environment_index       0.0109729  0.0037740   2.907  0.00369 ** 
+percent_physically_inactive  0.0308874  0.0008354  36.974  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.1317 on 1672 degrees of freedom
+Multiple R-squared:  0.5548,    Adjusted R-squared:  0.5542 
+F-statistic:  1042 on 2 and 1672 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call: rlm(formula = logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+Residuals:
+      Min        1Q    Median        3Q       Max 
+-0.772368 -0.079898  0.002538  0.077796  0.450896 
+
+Coefficients:
+                            Value    Std. Error t value 
+(Intercept)                  -1.3962   0.0432   -32.3408
+food_environment_index        0.0147   0.0036     4.1236
+percent_physically_inactive   0.0304   0.0008    38.5002
+
+Residual standard error: 0.1177 on 1672 degrees of freedom</code></pre>
+</div>
+</div>
+</section>
+<section id="model-comparsion" class="slide level2">
+<h2>Model Comparsion</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code>RMSE Simple Huber: 38.9651 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>RMSE XGBoost: 1.16334 </code></pre>
+</div>
+</div>
+</section>
 <section id="recommendations" class="slide level2">
 <h2>Recommendations</h2>
 <ul>
 <li><p>Prioritize the young population by targeting environments that shape long-term health behaviors early in life.</p></li>
 <li><p>Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.</p></li>
 <li><p>Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.</p></li>
+</ul>
+</section>
+<section id="appendix" class="slide level2">
+<h2>Appendix</h2>
+<ul>
+<li>Correlation Matrix</li>
+<li>Diagnostic Plots for Linear Regression Models</li>
+<li></li>
 </ul>
 
 </section>

@@ -73,7 +73,7 @@ data_2025 <- data_2025[, !grepl("dentist", names(data_2025))]
 data_2025 <- data_2025[, !grepl("unreliable", names(data_2025))]
 data_2025 <- data_2025[, !grepl("deaths", names(data_2025))]
 
-drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","suicide_rate_age_adjusted","percent_fair_or_poor_health", "percent_voter_turnout", "percent_with_disability", "age_adjusted_death_rate", "percent_drive_alone_to_work", "income_ratio", "mens_median_earnings", "womens_median_earnings", "infant_mortality_rate","percent_uninsured_children","percent_uninsured_adults","percent_with_access_to_exercise_opportunities")
+drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","suicide_rate_age_adjusted","percent_fair_or_poor_health", "percent_voter_turnout", "percent_with_disability", "age_adjusted_death_rate", "income_ratio", "mens_median_earnings", "womens_median_earnings", "infant_mortality_rate","percent_uninsured_children","percent_uninsured_adults","percent_not_proficient_in_english", "percent_drive_alone_to_work")
 
 data_2025 <- data_2025[,!(names(data_2025) %in% drop_cols)]
 
@@ -146,7 +146,7 @@ plot_usmap( data = data_2025, values = "percent_adults_with_obesity") +
     na.value = "grey90"
   ) +
   theme(
-    legend.position = "left",
+    legend.position = "right",
     legend.title = element_text(face = "bold")
   )
 ```
@@ -154,50 +154,78 @@ plot_usmap( data = data_2025, values = "percent_adults_with_obesity") +
 ## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
 
 ```{r vip}
-
-# CART-algorthim regression tree 10 fold CV
-library(caret)
+library(xgboost)
 library(vip)
-
 set.seed(10)
-data_2025 <- data_2025 |> na.omit()
 
-tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
+# data_2025 <- na.omit(data_2025) no need to do this for XGBoost
+features <- data_2025[, !(names(data_2025) %in% c("percent_adults_with_obesity", "fips", "state", "county"))]
+label <- data_2025$percent_adults_with_obesity
 
-top_vi <- head(vi(tree), 15)
+data_matrix <- as.matrix(features)
+dtrain <- xgb.DMatrix(data = data_matrix, label = label)
 
-# pretty_labels <- c(
-#   "percent_physically_inactive" = "Physically Inactive",
-#   "median_household_income" = "Median Household Income",
-#   "percent_adults_reporting_currently_smoking" = "Smoking",
-#   "percent_excessive_drinking" = "Excessive Drinking",
-#   "percent_below_18_years_of_age" = "Population Below 18 Years Old",
-#   "percent_insufficient_sleep" = "Insufficient Sleep",
-#   "school_funding_adequacy" = "School Funding Adequacy",
-#   "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
-#   "percent_uninsured_adults" = "Uninsured Adults",
-#   "traffic_volume" = "Traffic Volume",
-#   "food_environment_index" = "Food Environment Index"
-# )
-# 
-# top_vi$Variable <- ifelse(
-#   top_vi$Variable %in% names(pretty_labels),
-#   pretty_labels[top_vi$Variable],
-#   top_vi$Variable
-# )
+params <- list(
+  objective = "reg:squarederror",
+  eval_metric = "rmse"
+)
 
+cv <- xgb.cv(
+  params = params,
+  data = dtrain,
+  nrounds = 100,
+  nfold = 10,
+  metrics = "rmse",
+  early_stopping_rounds = 10,
+  verbose = TRUE,
+  maximize = FALSE
+)
+
+best_nrounds <- cv$best_iteration
+
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = best_nrounds,
+  verbose = 1
+)
+
+top_vi <- head(vi(xgb_model), 10)
+
+pretty_labels <- c(
+  "percent_physically_inactive" = "Physically Inactive",
+  "median_household_income" = "Median Household Income",
+  "percent_adults_reporting_currently_smoking" = "Smoking",
+  "percent_excessive_drinking" = "Excessive Drinking",
+  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
+  "percent_insufficient_sleep" = "Insufficient Sleep",
+  "school_funding_adequacy" = "School Funding Adequacy",
+  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
+  "percent_uninsured_adults" = "Uninsured Adults",
+  "traffic_volume" = "Traffic Volume",
+  "food_environment_index" = "Food Environment Index",
+  "percent_feeling_lonely" = "Feeling Lonely",
+  "percent_children_in_single_parent_households" = "Children in Single Parent Household",
+  "percent_uninsured" = "Percent Uninsured",
+  "days_above_90f" = "Days Above 90F"
+)
+
+top_vi$Variable <- ifelse(
+  top_vi$Variable %in% names(pretty_labels),
+  pretty_labels[top_vi$Variable],
+  top_vi$Variable
+)
+
+importance_df <- xgb.importance(model = xgb_model)
 vip(top_vi, aesthetics = list(fill = "steelblue")) +
   labs(y = "Variable Importance (Total Reduction in RSS)")
-
 ```
 
 ## Linear Regression Model
 
 ```{r bivariate_model}
 library(MASS)
+library(broom)
 
 data_2025 <- data_2025 |> 
   mutate(
@@ -216,12 +244,37 @@ huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_i
 
 summary(huber_model)
 # Need to justify this over lm_simple
+
+coef_df <- tidy(huber_model, conf.int = TRUE) |> 
+  filter(term != "(Intercept)")
+
+coef_df <- coef_df %>%
+  mutate(
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+                  "food_environment_index" = "Food Environment Index",
+                  "percent_physically_inactive" = "Physically Inactive (%)")
+  )
+
+ggplot(coef_df, aes(x = OR, y = term)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_errorbarh(aes(xmin = OR_low, xmax = OR_high), height = 0.2, color = "gray30") +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +  # no effect line
+  labs(
+    x = "Odds Ratio (Effect Size)",
+    y = NULL,
+  ) 
+
+# A 1% increase in the percentage of physically inactive adults in a county is associated with a 3.1% increase in the odds that an adult in that county has obesity.
+# 
+# A one unit increase in the food environment index is associated with a 1.7% increase in the odds that an adult in that county has obesity.
 ```
+
 ```{r multivariate_model}
-
+# We selected variables based on correlation analysis, theoretical relevance, and robustness to outliers, avoiding machine learning-based selection methods to preserve interpretability.
 ```
-
-## Model Comparsion
 
 
 ## Recommendations

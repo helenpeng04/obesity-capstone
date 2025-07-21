@@ -6,7 +6,8 @@ author:
   - "<strong>Jordan Faustin</strong><br><small>Howard University</small>"
   - "<strong>Anvith Thumma</strong><br><small>Arizona State University</small>"
 format: 
-  revealjs:
+  revealjs: 
+    embed-resources: true
     theme: serif
     slide-number: true
     smaller: true
@@ -195,6 +196,7 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
 ## Fuel or Fire {.center}
 
 There is a relationship between obesity rates, physical inactivity, and healthy food environments. Now we want to confirm whether we're looking at the "Fuel" or the "Fire" of the situation. Reasoning behind this process is to clarify that we are targeting a driver and not a symptom,
+
 
 ## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
 
@@ -389,3 +391,48 @@ summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_
 -   Correlation Matrix
 -   Diagnostic Plots for Linear Regression Models
 -   
+
+```{r linear model}
+# Transform obesity to logit scale (as shown in slides)
+data_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+lm_base <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+              data = data_2025)
+
+library(MASS)
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+                   data = data_2025)
+
+lm_expanded <- lm(logit_obesity ~ percent_physically_inactive + 
+                  percent_limited_access_to_healthy_foods + 
+                  percent_food_insecure,
+                data = data_2025)
+
+# Compare models
+library(broom)
+library(knitr)
+
+model_comparison <- list(
+  "Base Model" = tidy(lm_base),
+  "Huber Robust" = tidy(huber_model),
+  "Expanded Model" = tidy(lm_expanded)
+)
+
+kable(model_comparison, digits = 4, 
+      caption = "Comparison of Obesity Prediction Models")
+
+# Check assumptions
+par(mfrow = c(2, 2))
+plot(lm_base)
+
+# Check for multicollinearity
+car::vif(lm_expanded)
+
+# Check residual distribution
+ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
+  stat_qq() + stat_qq_line()
+```

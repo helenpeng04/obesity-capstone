@@ -1,0 +1,239 @@
+---
+title: "Does physical inactivity level and access to healthy food affect obesity rate at the county level?"
+author: Helen Peng, Anvith Thumma, and Jordan Faustin
+format: 
+  revealjs:
+    theme: simple
+    slide-number: true
+    smaller: true
+editor: visual
+---
+
+## Why This Question is Important
+
+-   **Public Health Crisis:** Obesity is a major contributor to chronic diseases (diabetes, heart disease, cancer) and rising healthcare costs.
+
+-   **Disparities in Obesity:** Obesity rates vary widely by region, income, and race/ethnicity. Identifying structural barriers (like food access and inactivity) can inform equitable policies.
+
+-   **Rise in Weight Loss Drugs:** Medications like Ozempic and Wegovy are gaining popularity as quick fixes, but they’re expensive and don’t address root causes like environment or behavior.
+
+## Data Overview
+
+-   **Observations:** Data at the county level across all 50 U.S. states in 2025
+
+-   **Variables of Interest:**
+
+    -   \% Adults with Obesity
+
+    -   \% Physically Inactive
+
+    -   Food Environment Index (1-10) - Higher is Better
+
+    -   State and County Identifiers
+
+-   **Handling Missing Data:**
+
+    -   If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.
+
+    -   Seven counties that did not have data for obesity rate, our response variable and so, we dropped those counties to do a complete case analysis.
+
+```{r setup}
+library(knitr)
+opts_chunk$set(message=FALSE, warning=FALSE, fig.align="center",
+               echo=FALSE, tidy=TRUE)
+```
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- data_2025 |> 
+  janitor::clean_names() 
+
+food_index_2025 <- food_index_2025 |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips") 
+data_2025 <- data_2025[, !grepl("percent_ci", names(data_2025))]
+data_2025 <- data_2025[, !grepl("national_z", names(data_2025))]
+data_2025 <- data_2025[, !grepl("injury_death", names(data_2025))]
+data_2025 <- data_2025[, !grepl("percentile", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_white", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_hispanic", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_native", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_aian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_asian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_black", names(data_2025))]
+data_2025 <- data_2025[, !grepl("dentist", names(data_2025))]
+data_2025 <- data_2025[, !grepl("unreliable", names(data_2025))]
+data_2025 <- data_2025[, !grepl("deaths", names(data_2025))]
+
+drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","suicide_rate_age_adjusted","percent_fair_or_poor_health", "percent_voter_turnout", "percent_with_disability", "age_adjusted_death_rate", "percent_drive_alone_to_work", "income_ratio", "mens_median_earnings", "womens_median_earnings", "infant_mortality_rate","percent_uninsured_children","percent_uninsured_adults","percent_with_access_to_exercise_opportunities")
+
+data_2025 <- data_2025[,!(names(data_2025) %in% drop_cols)]
+
+data_2025 <- data_2025  |> 
+  rename(
+    county = county.x,
+    state = state.x
+  )
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  dplyr::select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index),
+      days_above_90f = if_else(days_above_90f > 365, 365, days_above_90f)) |> 
+  dplyr::select(-statewide_food_environment_index) |> 
+  filter(!is.na(percent_adults_with_obesity))
+```
+
+## As physical inactivity increases obesity rates increases and as access to healthy food increases obesity rates decreases.
+
+```{r scatterplot}
+library(patchwork)
+
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) +
+  theme_minimal()
+
+physical_obesity_plot + food_obesity_plot 
+```
+
+## Obesity rates are consistently higher in the Midwest and the South compared to the West Coast and the Northeast.
+
+```{r obesity_map}
+library(usmap)
+
+q_brks <- floor(quantile(data_2025$percent_adults_with_obesity, probs = seq(0, 1, length.out = 5), na.rm = TRUE))
+
+plot_usmap( data = data_2025, values = "percent_adults_with_obesity") +
+  scale_fill_gradient(low = "lightyellow", high = "darkred",
+    breaks = q_brks,
+    labels = round(q_brks, 1),
+    name = "Obesity Rate (%)",
+    na.value = "grey90"
+  ) +
+  theme(
+    legend.position = "left",
+    legend.title = element_text(face = "bold")
+  )
+```
+
+## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
+
+```{r vip}
+
+# CART-algorthim regression tree 10 fold CV
+library(caret)
+library(vip)
+
+set.seed(10)
+data_2025 <- data_2025 |> na.omit()
+
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
+
+top_vi <- head(vi(tree), 15)
+
+# pretty_labels <- c(
+#   "percent_physically_inactive" = "Physically Inactive",
+#   "median_household_income" = "Median Household Income",
+#   "percent_adults_reporting_currently_smoking" = "Smoking",
+#   "percent_excessive_drinking" = "Excessive Drinking",
+#   "percent_below_18_years_of_age" = "Population Below 18 Years Old",
+#   "percent_insufficient_sleep" = "Insufficient Sleep",
+#   "school_funding_adequacy" = "School Funding Adequacy",
+#   "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
+#   "percent_uninsured_adults" = "Uninsured Adults",
+#   "traffic_volume" = "Traffic Volume",
+#   "food_environment_index" = "Food Environment Index"
+# )
+# 
+# top_vi$Variable <- ifelse(
+#   top_vi$Variable %in% names(pretty_labels),
+#   pretty_labels[top_vi$Variable],
+#   top_vi$Variable
+# )
+
+vip(top_vi, aesthetics = list(fill = "steelblue")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
+
+```
+
+## Linear Regression Model
+
+```{r bivariate_model}
+library(MASS)
+
+data_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+
+summary(lm_simple)
+# plot(lm_simple) -> Moved to appendix
+
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+
+summary(huber_model)
+# Need to justify this over lm_simple
+```
+
+```{r multivariate_model}
+
+```
+
+## Model Comparsion
+
+## Recommendations
+
+-   Prioritize the young population by targeting environments that shape long-term health behaviors early in life.
+
+-   Enhance sidewalk infrastructure across all clusters to promote walkability, encourage physical activity, and support safe routes for children and families.
+
+-   Invest in school funding to strengthen the local food environment index and promote healthy habits—such as walking to school and accessing nutritious, affordable meals.
+
+## Appendix
+
+-   Correlation Matrix
+-   Diagnostic Plots for Linear Regression Models
+-   

@@ -1,0 +1,392 @@
+---
+title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors"
+subtitle: "SURE 2025"
+author:
+  - "<strong>Helen Peng</strong><br><small>Carnegie Mellon University</small>"
+  - "<strong>Jordan Faustin</strong><br><small>Howard University</small>"
+  - "<strong>Anvith Thumma</strong><br><small>Arizona State University</small>"
+format: 
+  revealjs:
+    theme: serif
+    slide-number: true
+    smaller: true
+    include-after-body: |
+      <style>
+        .reveal .slides section.title-slide {
+          text-align: center;
+        }
+        .reveal .slides section.title-slide .author p {
+          margin: 1em 0;
+          line-height: 1.5;
+        }
+      </style>
+editor: visual
+---
+
+## Does physical inactivity level and access to healthy food affect obesity rate at the county level? {.center}
+
+## Why This Question is Important
+
+-   **Public Health Implications:** <br> Obesity is a major contributor to rising healthcare costs and chronic diseases such as diabetes, heart disease, and cancer.
+
+-   **Social Factors of Health:** <br> Physical Inactivity and food access are modifiable factors linked to obesity. In turn, studying their impact highlights how our environment and infrastructure, like parks, grocery stores, and schools, can shape our health outcomes.
+
+-   **Policy and Community Planning:** <br> New information made through findings can inform policies like urban planning, subsidizing healthy food retailers in under-served areas, school/workplace wellness programs.
+
+## Agenda
+
+-   **Data Overview**
+-   **Initial Analysis**
+-   **Understanding Direction**
+-   **Modeling and Comparison**
+-   **Discussion**
+-   **Recommendations**
+-   **Appendix**
+
+## Data Overview
+
+-   **Observations:**
+
+    -   Data at the county level across all 50 U.S. states in 2025
+
+-   **Variables of Interest:**
+
+    -   \% Adults with Obesity
+
+    -   \% Physically Inactive
+
+    -   Food Environment Index (1-10)
+
+    -   State and County Identifiers
+
+-   **Handling Missing Data:**
+
+    -   If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.
+
+    -   Seven counties that did not have data for obesity rate, our response variable and so, we dropped those counties to do a complete case analysis.
+
+```{r setup}
+library(knitr)
+opts_chunk$set(message=FALSE, warning=FALSE, fig.align="center",
+               echo=FALSE, tidy=TRUE)
+```
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- data_2025 |> 
+  janitor::clean_names() 
+
+food_index_2025 <- food_index_2025 |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips") 
+data_2025 <- data_2025[, !grepl("percent_ci", names(data_2025))]
+data_2025 <- data_2025[, !grepl("national_z", names(data_2025))]
+data_2025 <- data_2025[, !grepl("injury_death", names(data_2025))]
+data_2025 <- data_2025[, !grepl("percentile", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_white", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_hispanic", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_native", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_aian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_asian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_black", names(data_2025))]
+data_2025 <- data_2025[, !grepl("dentist", names(data_2025))]
+data_2025 <- data_2025[, !grepl("unreliable", names(data_2025))]
+data_2025 <- data_2025[, !grepl("deaths", names(data_2025))]
+
+drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","suicide_rate_age_adjusted","percent_fair_or_poor_health", "percent_voter_turnout", "percent_with_disability", "age_adjusted_death_rate", "percent_drive_alone_to_work", "income_ratio", "mens_median_earnings", "womens_median_earnings", "infant_mortality_rate","percent_uninsured_children","percent_uninsured_adults","percent_with_access_to_exercise_opportunities")
+
+data_2025 <- data_2025[,!(names(data_2025) %in% drop_cols)]
+
+data_2025 <- data_2025  |> 
+  rename(
+    county = county.x,
+    state = state.x
+  )
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  dplyr::select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index),
+      days_above_90f = if_else(days_above_90f > 365, 365, days_above_90f)) |> 
+  dplyr::select(-statewide_food_environment_index) |> 
+  filter(!is.na(percent_adults_with_obesity))
+```
+
+## As physical inactivity increases obesity rates increase as well, and as access to healthy food increase obesity rates start to decline
+
+```{r scatterplot}
+library(patchwork)
+
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) 
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) 
+
+physical_obesity_plot + food_obesity_plot 
+```
+
+## Obesity rates are significantly higher in the Midwest and South compared to the Northeast and West
+
+```{r obesity_map}
+library(usmap)
+library(viridis)
+library(ggplot2)
+
+# Define fixed limits based on your data range (18 to 53)
+legend_min <- 18
+legend_max <- 53
+
+# Create quantile breaks (optional, but helps distribute colors)
+q_brks <- floor(quantile(
+  data_2025$percent_adults_with_obesity,
+  probs = seq(0, 1, length.out = 5),
+  na.rm = TRUE
+))
+
+# Plot map with FIXED legend scaling
+plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA) +
+  scale_fill_viridis_c(
+    option = "inferno",     # Blue-yellow color scale (colorblind-friendly)
+    direction = -1,         # Reverse to emphasize high values
+    breaks = q_brks,        # Quantile breaks
+    labels = round(q_brks, 1),
+    name = "Obesity Rate (%)",
+    na.value = "grey90",
+    limits = c(legend_min, legend_max)  # FIXED SCALE (18-53)
+  ) +
+  theme(
+    legend.position = "left",
+    legend.title = element_text(face = "bold")
+  )
+```
+
+# Fuel or Fire {.center}
+
+<!-- -   **We understand that there are correlations between obesity rates, physical inactivity, and healthy food environments. Now we to confirm whether we're looking at the "Fuel" or the "Fire" of the situation** -->
+
+<!-- -   **Importance behind this process is that it assists us with targeting the root cause** -->
+
+## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
+
+```{r vip}
+
+# CART-algorthim regression tree 10 fold CV
+library(caret)
+library(vip)
+
+set.seed(10)
+data_2025 <- data_2025 |> na.omit()
+
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
+
+top_vi <- head(vi(tree), 15)
+
+pretty_labels <- c(
+  "percent_physically_inactive" = "Physically Inactive",
+  "median_household_income" = "Median Household Income",
+  "percent_adults_reporting_currently_smoking" = "Smoking",
+  "percent_excessive_drinking" = "Excessive Drinking",
+  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
+  "percent_insufficient_sleep" = "Insufficient Sleep",
+  "school_funding_adequacy" = "School Funding Adequacy",
+  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
+  "percent_uninsured_adults" = "Uninsured Adults",
+  "traffic_volume" = "Traffic Volume",
+  "food_environment_index" = "Food Environment Index",
+  "percent_uninsured" = "Uninsured Adults"
+)
+
+top_vi$Variable <- ifelse(
+  top_vi$Variable %in% names(pretty_labels),
+  pretty_labels[top_vi$Variable],
+  top_vi$Variable
+)
+
+vip(top_vi, aesthetics = list(fill = "steelblue")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
+
+```
+## Modeling and Comparison
+
+```{r bivariate_model}
+# Create model comparison summary table
+library(MASS)
+library(knitr)
+
+# Prepare data and fit models
+data_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+
+# Create model comparison table
+model_comparison <- data.frame(
+  Model = c("Linear Model (OLS)", "Huber Robust Model"),
+  `Food Environment Index` = c(
+    sprintf("%.4f (%.4f)", 
+            coef(lm_simple)[2], 
+            summary(lm_simple)$coefficients[2, 2]),
+    sprintf("%.4f (%.4f)", 
+            coef(huber_model)[2], 
+            summary(huber_model)$coefficients[2, 2])
+  ),
+  `Physically Inactive` = c(
+    sprintf("%.4f (%.4f)", 
+            coef(lm_simple)[3], 
+            summary(lm_simple)$coefficients[3, 2]),
+    sprintf("%.4f (%.4f)", 
+            coef(huber_model)[3], 
+            summary(huber_model)$coefficients[3, 2])
+  ),
+  `R-squared` = c(
+    sprintf("%.4f", summary(lm_simple)$r.squared),
+    "N/A"
+  ),
+  `Residual SE` = c(
+    sprintf("%.4f", summary(lm_simple)$sigma),
+    sprintf("%.4f", huber_model$s)
+  )
+)
+
+# Display table
+model_comparison |> 
+  kable(
+    digits = 4,
+    col.names = c("Model", "Food Environment Index (SE)", "Physically Inactive (SE)", 
+                  "R-squared", "Residual SE"),
+    caption = "Comparison of Linear and Huber Robust Models for Obesity Prediction"
+  )
+```
+
+## Food Environment Index appears to be a confounding variable
+
+```{r}
+# Clean data
+set.seed(10)
+data_2025 <- data_2025 |> na.omit()
+
+tree_fei <- train(food_environment_index ~ . - fips - state - county,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
+
+# Top 10 predictors of FEI
+top_vi_fei <- head(vi(tree_fei), 10)
+
+pretty_labels_fei <- c(
+  "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)",
+  "percent_food_insecure" = "Food Insecurity (%)",
+  "median_household_income" = "Median Household Income",
+  "percent_children_in_poverty" = "Children in Poverty (%)",
+  "number_limited_access_to_healthy_foods" = "Number with Limited Access to Healthy Foods",
+  "average_number_of_physically_unhealthy_days" = "Avg. Physically Unhealthy Days",
+  "percent_frequent_physical_distress" = "Frequent Physical Distress (%)",
+  "percent_physically_inactive" = "Physically Inactive (%)",
+  "number_completed_high_school" = "Completed High School",
+  "population_173" = "Population "
+)
+
+top_vi_fei$Variable <- ifelse(
+  top_vi_fei$Variable %in% names(pretty_labels_fei),
+  pretty_labels_fei[top_vi_fei$Variable],
+  top_vi_fei$Variable
+)
+
+vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
+
+```
+
+```{r, eval=FALSE}
+summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
+
+summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
+
+summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
+
+```
+
+## Key Takeaways
+
+-   **Physical Inactivity** is the strongest and most consistent predictor of obesity.
+
+-   **Food Insecurity Percentage** becomes a statistically significant predictor once we control for physical inactivity and drop FEI.
+
+-   **Access to Healthy Food Percentage** is not statistically significant in any specification we tested.
+
+-   Relying on the FEI alone is misleading because its signal disappears once key components (and physical inactivity) are included.
+
+## Recommendations
+
+#### Prioritize Physical Activity Infrastructure
+
+-   Building walkable Communities (expanding sidewalks, bike lanes, and trails in high-obesity counties)
+-   Funding Safe Routes to School programs to improve sidewalks, crosswalks, and safety patrols.
+
+#### Improve Food Access with Targeted Interventions
+
+-   Deploying Mobile Food Solutions such as produce vans (e.g., Veggie Van in NC) in food deserts. and hosting pop-up markets paired with nutrition workshops.
+
+#### Redirecting Funding
+
+-   Shifting resources from FEI-based programs to hyper-local initiatives (e.g., subsidized CSA boxes for low-income families).
+
+## Possible Future Work
+
+-   Establishing a count of parks and wellness centers per county
+
+-   Mapping their respective distance and location
+
+-   Checking for trends on when individuals are going to the fitness locations
+
+## Thank You {.center}
+
+## Questions? {.center}
+
+## Appendix
+
+-   Correlation Matrix
+-   Diagnostic Plots for Linear Regression Models
+-   

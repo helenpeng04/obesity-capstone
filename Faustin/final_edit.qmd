@@ -158,7 +158,7 @@ food_obesity_plot <- data_2025 |>
 physical_obesity_plot + food_obesity_plot 
 ```
 
-## Obesity rates are significantly higher in the Midwest and South compared to the Northeast and West {.smaller}
+## Obesity rates are notable higher in the Midwest and South compared to the Northeast and West {.smaller}
 
 ```{r obesity_map}
 library(usmap)
@@ -195,7 +195,33 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
 
 ## Fuel or Fire {.center}
 
-There is a relationship between obesity rates, physical inactivity, and healthy food environments. Now we want to confirm whether we're looking at the "Fuel" or the "Fire" of the situation. Reasoning behind this process is to clarify that we are targeting a driver and not a symptom,
+There is a relationship between obesity rates, physical inactivity, and healthy food environments. Now we want to confirm whether we're looking at the "Fuel" or the "Fire" of the situation. Reasoning behind this process is to clarify that we are targeting a driver and not a symptom.
+
+## As physical inactivity increases obesity rates increase as well, and as access to healthy food increase obesity rates start to decline {.smaller}
+
+```{r scatterplot}
+library(patchwork)
+
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) 
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) 
+
+physical_obesity_plot + food_obesity_plot 
+```
 
 ## Modeling and Comparison
 
@@ -254,99 +280,6 @@ model_comparison |>
                   "R-squared", "Residual SE"),
     caption = "Comparison of Linear and Huber Robust Models for Obesity Prediction"
   )
-```
-
-
-## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
-
-```{r vip}
-
-# CART-algorthim regression tree 10 fold CV
-library(caret)
-library(vip)
-
-set.seed(10)
-data_2025 <- data_2025 |> na.omit()
-
-tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
-
-top_vi <- head(vi(tree), 15)
-
-pretty_labels <- c(
-  "percent_physically_inactive" = "Physically Inactive",
-  "median_household_income" = "Median Household Income",
-  "percent_adults_reporting_currently_smoking" = "Smoking",
-  "percent_excessive_drinking" = "Excessive Drinking",
-  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
-  "percent_insufficient_sleep" = "Insufficient Sleep",
-  "school_funding_adequacy" = "School Funding Adequacy",
-  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
-  "percent_uninsured_adults" = "Uninsured Adults",
-  "traffic_volume" = "Traffic Volume",
-  "food_environment_index" = "Food Environment Index",
-  "percent_uninsured" = "Uninsured Adults"
-)
-
-top_vi$Variable <- ifelse(
-  top_vi$Variable %in% names(pretty_labels),
-  pretty_labels[top_vi$Variable],
-  top_vi$Variable
-)
-
-vip(top_vi, aesthetics = list(fill = "steelblue")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
-```
-
-## Food Environment Index appears to be a confounding variable {.smaller}
-
-```{r}
-# Clean data
-set.seed(10)
-data_2025 <- data_2025 |> na.omit()
-
-tree_fei <- train(food_environment_index ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
-
-# Top 10 predictors of FEI
-top_vi_fei <- head(vi(tree_fei), 10)
-
-pretty_labels_fei <- c(
-  "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)",
-  "percent_food_insecure" = "Food Insecurity (%)",
-  "median_household_income" = "Median Household Income",
-  "percent_children_in_poverty" = "Children in Poverty (%)",
-  "number_limited_access_to_healthy_foods" = "Number with Limited Access to Healthy Foods",
-  "average_number_of_physically_unhealthy_days" = "Avg. Physically Unhealthy Days",
-  "percent_frequent_physical_distress" = "Frequent Physical Distress (%)",
-  "percent_physically_inactive" = "Physically Inactive (%)",
-  "number_completed_high_school" = "Completed High School",
-  "population_173" = "Population "
-)
-
-top_vi_fei$Variable <- ifelse(
-  top_vi_fei$Variable %in% names(pretty_labels_fei),
-  pretty_labels_fei[top_vi_fei$Variable],
-  top_vi_fei$Variable
-)
-
-vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
-```
-
-```{r, eval=FALSE}
-summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
-
-summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
-
-summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
-
 ```
 
 ## Key Takeaways

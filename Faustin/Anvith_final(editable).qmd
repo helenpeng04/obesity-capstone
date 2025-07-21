@@ -138,23 +138,32 @@ library(usmap)
 library(viridis)
 library(ggplot2)
 
-# Create quantile breaks
-q_brks <- floor(quantile(data_2025$percent_adults_with_obesity, probs = seq(0, 1, length.out = 5), na.rm = TRUE))
+# Define fixed limits based on your data range (18 to 53)
+legend_min <- 18
+legend_max <- 53
 
-# Plot map
+# Create quantile breaks (optional, but helps distribute colors)
+q_brks <- floor(quantile(
+  data_2025$percent_adults_with_obesity,
+  probs = seq(0, 1, length.out = 5),
+  na.rm = TRUE
+))
+
+# Plot map with FIXED legend scaling
 plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA) +
   scale_fill_viridis_c(
-    option = "plasma",
-    direction = -1, 
-    breaks = q_brks,
+    option = "cividis",     # Blue-yellow color scale (colorblind-friendly)
+    direction = -1,         # Reverse to emphasize high values
+    breaks = q_brks,        # Quantile breaks
     labels = round(q_brks, 1),
     name = "Obesity Rate (%)",
-    na.value = "grey90"
+    na.value = "grey90",
+    limits = c(legend_min, legend_max)  # FIXED SCALE (18-53)
   ) +
   theme(
     legend.position = "left",
-    legend.title = element_text(face = "bold"),
-  ) 
+    legend.title = element_text(face = "bold")
+  )
 ```
 
 ## Clustering U.S. Counties by Obesity, Food Access, and Inactivity
@@ -238,12 +247,12 @@ library(vip)
 set.seed(10)
 data_2025 <- data_2025 |> na.omit()
 
-tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county - cluster,
               method = "rpart", tuneLength = 20,
               trControl = trainControl(method = "cv", number = 10),
               data = data_2025)
 
-top_vi <- head(vi(tree), 15)
+top_vi <- head(vi(tree), 10)
 
 pretty_labels <- c(
   "percent_physically_inactive" = "Physically Inactive",
@@ -295,35 +304,6 @@ summary(huber_model)
 # Need to justify this over lm_simple
 ```
 
-```{r}
-library(broom)
-huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
-    data = data_2025)
-
-coef_df <- tidy(huber_model, conf.int = TRUE) |> 
-  filter(term != "(Intercept)")
-
-coef_df <- coef_df |>
-  mutate(
-    OR = exp(estimate),
-    OR_low = exp(conf.low),
-    OR_high = exp(conf.high),
-    term = recode(term,
-                  "food_environment_index" = "Food Environment Index",
-                  "percent_physically_inactive" = "Physically Inactive (%)")
-  )
-
-ggplot(coef_df, aes(x = OR, y = term)) +
-  geom_point(color = "steelblue", size = 3) +
-  geom_errorbarh(aes(xmin = OR_low, xmax = OR_high), height = 0.2, color = "gray30", size = 1.2) +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +  # no effect line
-  labs(
-    x = "Odds Ratio (Effect Size)",
-    y = NULL,
-  ) 
-
-```
-
 ## Food Environment Index appears to be a confounding variable
 
 ```{r}
@@ -331,17 +311,40 @@ ggplot(coef_df, aes(x = OR, y = term)) +
 set.seed(10)
 data_2025 <- data_2025 |> na.omit()
 
-tree_fei <- train(food_environment_index ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
+# Train the model
+tree_fei <- train(food_environment_index ~ . - fips - state - county - cluster,
+                  method = "rpart", tuneLength = 20,
+                  trControl = trainControl(method = "cv", number = 10),
+                  data = data_2025)
 
-# Top 10 predictors of FEI
+# Define pretty labels for FEI predictors
+pretty_labels_fei <- c(
+  "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)",
+  "percent_food_insecure" = "Food Insecurity (%)",
+  "median_household_income" = "Median Household Income",
+  "number_limited_access_to_healthy_foods" = "Count of Limited Access Areas",
+  "average_number_of_physically_unhealthy_days" = "Avg. Physically Unhealthy Days",
+  "percent_children_in_poverty" = "Children in Poverty (%)",
+  "percent_frequent_physical_distress" = "Frequent Physical Distress (%)",
+  "percent_physically_inactive" = "Physically Inactive (%)",
+  "number_completed_high_school" = "High School Graduates",
+  "population_173" = "Population (Age 17-3)"
+)
+
+# Get top 10 predictors and apply labels
 top_vi_fei <- head(vi(tree_fei), 10)
+top_vi_fei$Variable <- ifelse(
+  top_vi_fei$Variable %in% names(pretty_labels_fei),
+  pretty_labels_fei[top_vi_fei$Variable],
+  top_vi_fei$Variable
+)
 
+# Create the plot
+library(vip)
 vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
+  labs(y = "Variable Importance (Total Reduction in RSS)",
+       title = "Top Predictors of Food Environment Index") +
+  theme_minimal()
 ```
 
 ```{r, eval=FALSE}
@@ -350,8 +353,6 @@ summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
 summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
 summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
-
-summary(rlm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + median_household_income, data = data_2025))
 
 ```
 

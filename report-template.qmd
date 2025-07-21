@@ -1,9 +1,9 @@
 ---
-title: "Title"
+title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors"
 author:
-  - Author 1
-  - Author 2
-  - Author 3
+  - Helen Peng
+  - Anvith Thumma
+  - Jordon Faustin
 date: "July 25, 2025"
 toc: true
 format:
@@ -15,17 +15,33 @@ execute:
   echo: false
   warning: false
   message: false
+editor: 
+  markdown: 
+    wrap: sentence
 ---
 
----
+------------------------------------------------------------------------
 
-## Introduction 
+## Introduction
 
 Describe the problem and why it is important.
 
 ## Data
 
-Describe the data you’re using in detail, where you accessed it, along with relevant exploratory data analysis (EDA). You should also include descriptions of any relevant data pre-processing steps (e.g., whether you consider specific observations, create any meaningful features, etc.---but don't mention minor steps like column type conversion, filtering out unnecessary rows)
+We used publicly available county-level data from the **2025 County Health Rankings Data**, provided by the University of Wisconsin Population Health Institute.
+The dataset includes a wide range of health-related indicators across all U.S. counties, including demographics, socioeconomic, behavioral, and healthcare access variables.
+
+Our main variables of interests are:
+
+-   **Adult Obesity Rate (Response Variable):**
+
+-   **Physical Inactivity Rate:**
+
+-   **Food Environment Index:**
+
+To handle missing data,
+
+### Exploratory Data Analysis
 
 ## Methods
 
@@ -33,53 +49,55 @@ Describe the modeling techniques you chose, their assumptions, justifications fo
 
 ## Results
 
-Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
+Describe your results.
+This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output.
+(Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
 
 ## Recommendations
 
-Make recommendations to UHG/Optum on specific targeted programs that can address the question of interest. Use evidence found in your analysis to back up your recommendations. This should be aimed at a non-technical reader.
+Make recommendations to UHG/Optum on specific targeted programs that can address the question of interest.
+Use evidence found in your analysis to back up your recommendations.
+This should be aimed at a non-technical reader.
 
 ## Discussion
 
-Give your conclusions and summarize what you have learned with regards to your question of interest. Are there any limitations with the approaches you used? What do you think are the next steps to follow-up your project?
+Give your conclusions and summarize what you have learned with regards to your question of interest.
+Are there any limitations with the approaches you used?
+What do you think are the next steps to follow-up your project?
 
 ## Appendix: A quick tutorial
 
 **(Feel free to remove this section when you submit)**
 
-This a Quarto document. 
+This a Quarto document.
 To learn more about Quarto see <https://quarto.org>.
 You can use the Render button to see what it looks like in HTML.
 
 ### Text formatting
 
-Text can be bolded with **double asterisks** and italicized with *single asterisks*. 
+Text can be bolded with **double asterisks** and italicized with *single asterisks*.
 Monospace text, such as for short code snippets, uses `backticks`.
-(Note these are different from quotation marks or apostrophes.) Links are
-written [like this](http://example.com/).
+(Note these are different from quotation marks or apostrophes.) Links are written [like this](http://example.com/).
 
 Bulleted lists can be written with asterisks:
 
-* Each item starts on a new line with an asterisk.
-* Items should start on the beginning of the line.
-* Leave blank lines after the end of the list so the list does not continue.
+-   Each item starts on a new line with an asterisk.
+-   Items should start on the beginning of the line.
+-   Leave blank lines after the end of the list so the list does not continue.
 
-Mathematics can be written with LaTeX syntax using dollar signs. 
+Mathematics can be written with LaTeX syntax using dollar signs.
 For instance, using single dollar signs we can write inline math: $(-b \pm \sqrt{b^2 - 4ac})/2a$.
 
-To write math in "display style", i.e. displayed on its own line centered on the
-page, we use double dollar signs:
-$$
+To write math in "display style", i.e. displayed on its own line centered on the page, we use double dollar signs: $$
 x^2 + y^2 = 1
 $$
 
-
 ### Code blocks
 
-Code blocks are evaluated sequentially when you hit Render. 
-As the code runs, `R` prints out which block is running, so naming blocks is useful if you want to know which one takes a long time. 
-After the block name, you can specify [chunk options](https://yihui.org/knitr/options/). 
-For example, `echo` controls whether the code is printed in the document. 
+Code blocks are evaluated sequentially when you hit Render.
+As the code runs, `R` prints out which block is running, so naming blocks is useful if you want to know which one takes a long time.
+After the block name, you can specify [chunk options](https://yihui.org/knitr/options/).
+For example, `echo` controls whether the code is printed in the document.
 By default, output is printed in the document in monospace:
 
 ```{r, echo = FALSE}
@@ -95,7 +113,8 @@ head(mtcars)
 
 ### Figures
 
-If a code block produces a plot or figure, this figure will automatically be inserted inline in the report. That is, it will be inserted exactly where the code block is.
+If a code block produces a plot or figure, this figure will automatically be inserted inline in the report.
+That is, it will be inserted exactly where the code block is.
 
 ```{r}
 #| fig-width: 5
@@ -110,7 +129,7 @@ mtcars |>
        y = "Horsepower")
 ```
 
-Notice the use of `fig-width` and `fig-height` to control the figure's size (in inches). 
+Notice the use of `fig-width` and `fig-height` to control the figure's size (in inches).
 These control the sizes given to `R` when it generates the plot, so `R` proportionally adjusts the font sizes to be large enough.
 
 ### Tables
@@ -123,7 +142,7 @@ mtcars |>
   knitr::kable()
 ```
 
-We can summarize model results with a table. 
+We can summarize model results with a table.
 For instance, suppose we fit a linear regression model:
 
 ```{r}
@@ -131,8 +150,8 @@ For instance, suppose we fit a linear regression model:
 model1 <- lm(mpg ~ disp + hp + drat, data = mtcars)
 ```
 
-It is *not* appropriate to simply print `summary(model1)` into the report. 
-If we want the reader to understand what models we have fit and what their results are, we should provide a nicely formatted table. 
+It is *not* appropriate to simply print `summary(model1)` into the report.
+If we want the reader to understand what models we have fit and what their results are, we should provide a nicely formatted table.
 A simple option is to use the `tidy()` function from the `broom` package to get a data frame of the model fit, and simply report that as a table.
 
 ```{r }

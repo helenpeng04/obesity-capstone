@@ -351,6 +351,8 @@ summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_he
 
 summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
+summary(rlm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + median_household_income, data = data_2025))
+
 ```
 
 ### Summary

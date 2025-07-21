@@ -238,7 +238,7 @@ library(vip)
 set.seed(10)
 data_2025 <- data_2025 |> na.omit()
 
-tree <- train(percent_adults_with_obesity ~ . - fips - state - county - cluster,
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
               method = "rpart", tuneLength = 20,
               trControl = trainControl(method = "cv", number = 10),
               data = data_2025)
@@ -295,6 +295,35 @@ summary(huber_model)
 # Need to justify this over lm_simple
 ```
 
+```{r}
+library(broom)
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = data_2025)
+
+coef_df <- tidy(huber_model, conf.int = TRUE) |> 
+  filter(term != "(Intercept)")
+
+coef_df <- coef_df |>
+  mutate(
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+                  "food_environment_index" = "Food Environment Index",
+                  "percent_physically_inactive" = "Physically Inactive (%)")
+  )
+
+ggplot(coef_df, aes(x = OR, y = term)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_errorbarh(aes(xmin = OR_low, xmax = OR_high), height = 0.2, color = "gray30", size = 1.2) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +  # no effect line
+  labs(
+    x = "Odds Ratio (Effect Size)",
+    y = NULL,
+  ) 
+
+```
+
 ## Food Environment Index appears to be a confounding variable
 
 ```{r}
@@ -302,20 +331,13 @@ summary(huber_model)
 set.seed(10)
 data_2025 <- data_2025 |> na.omit()
 
-tree_fei <- train(food_environment_index ~ . - fips - state - county - cluster,
+tree_fei <- train(food_environment_index ~ . - fips - state - county,
               method = "rpart", tuneLength = 20,
               trControl = trainControl(method = "cv", number = 10),
               data = data_2025)
 
 # Top 10 predictors of FEI
 top_vi_fei <- head(vi(tree_fei), 10)
-
-
-top_vi_fei$Variable <- ifelse(
-  top_vi_fei$Variable %in% names(pretty_labels_fei),
-  pretty_labels_fei[top_vi_fei$Variable],
-  top_vi_fei$Variable
-)
 
 vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
   labs(y = "Variable Importance (Total Reduction in RSS)")
@@ -328,6 +350,8 @@ summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
 summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
 summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
+
+summary(rlm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + median_household_income, data = data_2025))
 
 ```
 

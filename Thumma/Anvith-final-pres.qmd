@@ -229,6 +229,37 @@ data_2025 |>
 
 From the clustering, we see that most of the U.S. has low park access. We thought that improving park access could help reduce inactivity. But in hotter regions like Clusters 1 and 3 in the Southeast, indoor facilities should be prioritized because of the extreme heat. This is one recommendation, and more will come later.
 
+```{r}
+library(corrplot)
+
+# Rename variables for cleaner display
+numeric_data <- data_2025 |>
+  dplyr::select(
+    `Obesity (%)` = percent_adults_with_obesity,
+    `Food Environment Index` = food_environment_index,
+    `Physically Inactive (%)` = percent_physically_inactive,
+    `Median Household Income ($)` = median_household_income
+  ) |>
+  na.omit()
+
+# Compute correlation matrix
+cor_matrix <- cor(numeric_data, method = "pearson")
+
+# Plot with prettier labels
+corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  tl.cex = 0.85, 
+  tl.srt = 45,
+  addCoef.col = "white",
+  number.cex = 0.85,
+  title = "Correlation Matrix of County-Level Variables",
+  mar = c(0, 0, 2, 0)
+)
+```
+
 ## Surprisingly, the Food Environment Index does not rank among the top predictors of county-level obesity rates.
 
 ```{r vip}
@@ -322,6 +353,10 @@ ggplot(coef_df, aes(x = OR, y = term)) +
     y = NULL,
   ) 
 
+huber_model_two <- rlm(logit_obesity ~ median_household_income + percent_limited_access_to_healthy_foods + percent_physically_inactive, 
+    data = data_2025)
+
+
 ```
 
 ## Food Environment Index appears to be a confounding variable
@@ -351,7 +386,7 @@ summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_he
 
 summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
-summary(rlm(logit_obesity ~ food_environment_index + percent_limited_access_to_healthy_foods + median_household_income, data = data_2025))
+summary(rlm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + median_household_income, data = data_2025))
 
 ```
 

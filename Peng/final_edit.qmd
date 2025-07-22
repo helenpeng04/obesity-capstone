@@ -187,13 +187,14 @@ library(MASS)
 data_2025 <- data_2025 |> 
   mutate(
     obesity_prop = percent_adults_with_obesity / 100,
-    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+    logit_obesity = log(obesity_prop / (1 - obesity_prop)),
+    median_income_k = median_household_income / 1000
   )
 
 huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
                    data = data_2025)
 
-huber_model2 <- lm(logit_obesity ~ median_household_income + percent_limited_access_to_healthy_foods, 
+huber_model2 <- rlm(logit_obesity ~ median_income_k + percent_limited_access_to_healthy_foods + percent_physically_inactive, 
                     data = data_2025)
 
 coef1_df <- tidy(huber_model, conf.int = TRUE) %>% 
@@ -220,20 +221,19 @@ coef_df <- bind_rows(coef1_df, coef2_df) %>%
                   "food_environment_index" = "Food Environment Index",
                   "percent_physically_inactive" = "Physically Inactive (%)",
                   "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Food (%)",
-                  "median_household_income" = "Median Household Income")
+                  "median_income_k " = "Median Household Income")
   )
 
 ggplot(coef_df, aes(x = OR, y = term, color = model)) +
   geom_point(size = 3, position = position_dodge(width = 0.6)) +
   geom_errorbarh(aes(xmin = OR_low, xmax = OR_high), height = 0.2, 
                  position = position_dodge(width = 0.6)) +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") + # no effect line
   labs(
     x = "Odds Ratio (Effect Size)",
     y = NULL,
     color = "Model"
-  ) +
-  theme_minimal()
+  ) 
 
 ```
 

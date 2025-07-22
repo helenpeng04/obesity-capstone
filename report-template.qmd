@@ -31,17 +31,141 @@ Describe the problem and why it is important.
 We used publicly available county-level data from the **2025 County Health Rankings Data**, provided by the University of Wisconsin Population Health Institute.
 The dataset includes a wide range of health-related indicators across all U.S. counties, including demographics, socioeconomic, behavioral, and healthcare access variables.
 
-Our main variables of interests are:
+Our main variables of interests were:
 
--   **Adult Obesity Rate (Response Variable):**
+-   **Adults with Obesity (%):** Percentage of adults (18+) with a body mass index (BMI) ≥ 30 kg/m² (age-adjusted).
 
--   **Physical Inactivity Rate:**
+-   **Physical Inactivity (%):** Percentage of adults (18+) reporting no leisure-time physical activity (age-adjusted).
 
--   **Food Environment Index:**
+-   **Food Environment Index (1-10):** Composite score indicating community access to healthy food and income levels.
 
-To handle missing data,
+For missing data, we imputed missing predictor values using the state average.
+Counties missing data for the response variable (adults with obesity) were excluded from the analysis (a total of 7 counties), resulting in a complete case dataset.
+
+```{r setup}
+library(knitr)
+opts_chunk$set(message=FALSE, warning=FALSE, fig.align="center",
+               echo=FALSE, tidy=TRUE)
+```
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025_data.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/helen/OneDrive/Documents/GitHub/obesity-capstone/Peng/2025_data.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- data_2025 |> 
+  janitor::clean_names() 
+
+food_index_2025 <- food_index_2025 |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips") 
+data_2025 <- data_2025[, !grepl("percent_ci", names(data_2025))]
+data_2025 <- data_2025[, !grepl("national_z", names(data_2025))]
+data_2025 <- data_2025[, !grepl("injury_death", names(data_2025))]
+data_2025 <- data_2025[, !grepl("percentile", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_white", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_hispanic", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_native", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_aian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_asian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_black", names(data_2025))]
+data_2025 <- data_2025[, !grepl("dentist", names(data_2025))]
+data_2025 <- data_2025[, !grepl("unreliable", names(data_2025))]
+data_2025 <- data_2025[, !grepl("deaths", names(data_2025))]
+
+drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","suicide_rate_age_adjusted","percent_fair_or_poor_health", "percent_voter_turnout", "percent_with_disability", "age_adjusted_death_rate", "percent_drive_alone_to_work", "income_ratio", "mens_median_earnings", "womens_median_earnings", "infant_mortality_rate","percent_uninsured_children","percent_uninsured_adults","percent_with_access_to_exercise_opportunities")
+
+data_2025 <- data_2025[,!(names(data_2025) %in% drop_cols)]
+
+data_2025 <- data_2025  |> 
+  rename(
+    county = county.x,
+    state = state.x
+  )
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  dplyr::select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index),
+      days_above_90f = if_else(days_above_90f > 365, 365, days_above_90f)) |> 
+  dplyr::select(-statewide_food_environment_index) |> 
+  filter(!is.na(percent_adults_with_obesity))
+```
 
 ### Exploratory Data Analysis
+
+```{r scatterplot}
+#| fig-width: 5
+#| fig-height: 3.5
+#| fig-cap: "Figure 1: Scatter plots illustrating a positive association between physical inactivity and obesity rates, and a negative association between healthy food access and obesity rates."
+
+library(patchwork)
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) 
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index",
+    y = "% Adults with Obesity"
+  ) 
+
+physical_obesity_plot + food_obesity_plot
+```
+
+```{r obesity_map}
+#| fig-width: 5
+#| fig-height: 3.5
+#| fig-cap: "Figure 2: Choropleth map showing substantial regional variation in adult obesity rates across U.S. counties in 2025, with higher prevalence observed in the Midwest and Southeast"
+
+library(usmap)
+library(viridis)
+library(ggplot2)
+
+min_val <- floor(min(data_2025$percent_adults_with_obesity, na.rm = TRUE))
+max_val <- ceiling(max(data_2025$percent_adults_with_obesity, na.rm = TRUE))
+
+custom_breaks <- seq(min_val, max_val, length.out = 5)
+
+plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA) +
+  scale_fill_viridis_c(
+    option = "inferno",
+    direction = -1,
+    limits = c(min_val, max_val),
+    breaks = custom_breaks,
+    labels = round(custom_breaks, 1),
+    name = "Obesity Rate (%)",
+    na.value = "grey90"
+  ) +
+  theme(
+    legend.position = "left",
+    legend.title = element_text(face = "bold")
+  )
+```
 
 ## Methods
 
@@ -52,6 +176,10 @@ Describe the modeling techniques you chose, their assumptions, justifications fo
 Describe your results.
 This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output.
 (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
+
+```{r}
+
+```
 
 ## Recommendations
 
@@ -65,7 +193,7 @@ Give your conclusions and summarize what you have learned with regards to your q
 Are there any limitations with the approaches you used?
 What do you think are the next steps to follow-up your project?
 
-## Appendix: A quick tutorial
+## Appendix
 
 **(Feel free to remove this section when you submit)**
 

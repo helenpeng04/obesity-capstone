@@ -253,4 +253,4 @@ To build on these findings, several avenues for future research are recommended.
 First, incorporating data on the number of parks, wellness centers, and recreational facilities per county—and mapping their distribution—can help clarify the role of environmental supports for physical activity.
 Additionally, analyzing temporal trends in fitness facility usage may offer insights into behavioral patterns and access disparities.
 Future studies should also explore other relevant variables that could influence obesity, such as public transportation availability, climate, and healthcare access.
-Finally, applying causal inference methods, such as instrumental variable analysis or difference-in-differences, could help determine whether physical inactivity directly contributes to obesity, as current results are based on observed correlations and cannot confirm causation.
+Finally, applying causal inference methods, such as instrumental variable analysis or matching methods, could help determine whether physical inactivity directly contributes to obesity, as current results are based on observed correlations and cannot confirm causation.

@@ -371,7 +371,9 @@ ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
 ```
 
 <!-- 1. Residuals vs. Fitted Values Plot -->
+
 <!-- X-axis: Fitted Values (Predicted Obesity Rates) -->
+
 <!-- Y-axis: Residuals (Actual - Predicted Obesity Rates) -->
 
 <!-- What it checks: -->
@@ -393,10 +395,13 @@ ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
 <!-- Funnel shape → Variance changes with predictions (e.g., obesity harder to predict in very urban counties) -->
 
 <!-- For obesity study: -->
+
 <!-- If high-obesity counties (right side) have bigger residuals, maybe the model works better for average counties than extreme ones. -->
 
 <!-- 2. Q-Q Plot (Theoretical Quantiles vs. Standardized Residuals) -->
+
 <!-- X-axis: Theoretical Normal Quantiles (Expected pattern if normal) -->
+
 <!-- Y-axis: Standardized Residuals (Actual errors, scaled) -->
 
 <!-- What it checks: -->
@@ -416,10 +421,13 @@ ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
 <!-- Points veer off at ends → Extreme outliers -->
 
 <!-- For obesity study: -->
+
 <!-- If tails bend up, your model underestimates obesity in the worst counties. If bends down, it overestimates. -->
 
 <!-- 3. Scale-Location Plot (Fitted Values vs. √Standardized Residuals) -->
+
 <!-- X-axis: Fitted Values (Predicted Obesity Rates) -->
+
 <!-- Y-axis: √|Standardized Residuals| (Square root of absolute errors) -->
 
 <!-- What it checks: -->
@@ -437,10 +445,13 @@ ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
 <!-- Downward slope → Opposite issue -->
 
 <!-- For obesity study: -->
+
 <!-- If high-fitted values show more spread, consider transforming obesity rates or adding predictors for extreme counties. -->
 
 <!-- 4. Residuals vs. Leverage Plot (Leverage vs. Standardized Residuals) -->
+
 <!-- X-axis: Leverage (How unusual a county's predictors are) -->
+
 <!-- Y-axis: Standardized Residuals (How badly the model predicted it) -->
 
 <!-- What it checks: -->

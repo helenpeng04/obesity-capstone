@@ -37,7 +37,11 @@ Our main variables of interests were:
 
 -   **Physical Inactivity (%):** Percentage of adults (18+) reporting no leisure-time physical activity (age-adjusted).
 
--   **Food Environment Index (1-10):** Composite score indicating community access to healthy food and income levels.
+-   **(FEI) Food Environment Index (1-10):** Composite score indicating community access to healthy food and income levels.
+
+<!-- -->
+
+-   **Limited Access to Healthy Food (%):** Percentage of the population that is low income and does not live close to a grocery store
 
 For missing data, we imputed missing predictor values using the state average.
 Counties missing data for the response variable (adults with obesity) were excluded from the analysis (a total of 7 counties), resulting in a complete case dataset.
@@ -106,6 +110,8 @@ data_2025 <- data_2025 |>
       days_above_90f = if_else(days_above_90f > 365, 365, days_above_90f)) |> 
   dplyr::select(-statewide_food_environment_index) |> 
   filter(!is.na(percent_adults_with_obesity))
+
+cor(data_2025$food_environment_index, data_2025$percent_limited_access_to_healthy_foods, use = "complete.obs")
 ```
 
 ### Exploratory Data Analysis
@@ -165,6 +171,9 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
     legend.position = "left",
     legend.title = element_text(face = "bold")
   )
+
+ggsave("cover.png")
+
 ```
 
 ## Methods

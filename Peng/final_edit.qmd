@@ -276,6 +276,50 @@ vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
 
 ```
 
+## Attempting XGBooast
+
+```{r}
+library(caret)
+library(vip)
+
+set.seed(10)
+
+tree <- train(percent_adults_with_obesity ~ . - fips - state - county,
+              method = "rpart", tuneLength = 20,
+              trControl = trainControl(method = "cv", number = 10),
+              data = data_2025)
+
+top_vi <- head(vi(tree), 15)
+
+pretty_labels <- c(
+  "percent_physically_inactive" = "Physically Inactive",
+  "median_household_income" = "Median Household Income",
+  "percent_adults_reporting_currently_smoking" = "Smoking",
+  "percent_excessive_drinking" = "Excessive Drinking",
+  "percent_below_18_years_of_age" = "Population Below 18 Years Old",
+  "percent_insufficient_sleep" = "Insufficient Sleep",
+  "school_funding_adequacy" = "School Funding Adequacy",
+  "percent_households_with_severe_cost_burden" = "Severe Cost Burden",
+  "percent_uninsured_adults" = "Uninsured Adults",
+  "traffic_volume" = "Traffic Volume",
+  "food_environment_index" = "Food Environment Index"
+)
+
+top_vi$Variable <- ifelse(
+  top_vi$Variable %in% names(pretty_labels),
+  pretty_labels[top_vi$Variable],
+  top_vi$Variable
+)
+
+vip(top_vi, aesthetics = list(fill = "steelblue")) +
+  labs(y = "Variable Importance (Total Reduction in RSS)")
+
+#TODO: how to decide how many variables to use in our beta regression because I just arbitarily chose 10 variables for this plot
+```
+
+```         
+```
+
 ```{r eval=FALSE}
 summary(lm(logit_obesity ~ percent_food_insecure + percent_physically_inactive + percent_limited_access_to_healthy_foods, data = data_2025))
 

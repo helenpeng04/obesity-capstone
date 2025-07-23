@@ -108,8 +108,6 @@ data_2025 <- data_2025 |>
       days_above_90f = if_else(days_above_90f > 365, 365, days_above_90f)) |> 
   dplyr::select(-statewide_food_environment_index) |> 
   filter(!is.na(percent_adults_with_obesity))
-
-cor(data_2025$food_environment_index, data_2025$percent_limited_access_to_healthy_foods, use = "complete.obs")
 ```
 
 ### Exploratory Data Analysis
@@ -118,7 +116,6 @@ cor(data_2025$food_environment_index, data_2025$percent_limited_access_to_health
 #| fig-width: 5
 #| fig-height: 3.5
 #| fig-cap: "Figure 1: Scatter plots illustrating a positive association between physical inactivity and obesity rates, and a negative association between healthy food access and obesity rates."
-# someone fix this
 
 library(patchwork)
 physical_obesity_plot <- data_2025 |>

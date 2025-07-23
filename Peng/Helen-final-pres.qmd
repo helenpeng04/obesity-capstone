@@ -267,14 +267,11 @@ library(dplyr)
 
 set.seed(10)
 
-# 1. Remove rows with missing outcome
 data_clean <- data_2025 %>% filter(!is.na(percent_adults_with_obesity))
 
-# 2. Remove unwanted columns including obesity_prop and logit_obesity
 X_df <- data_clean %>%
   dplyr::select(-fips, -state, -county, -percent_adults_with_obesity, -obesity_prop, -logit_obesity, -cluster)
 
-# 3. Convert factors and characters to numeric
 X_df <- data.frame(lapply(X_df, function(col) {
   if (is.factor(col) | is.character(col)) {
     as.numeric(as.factor(col))
@@ -283,13 +280,10 @@ X_df <- data.frame(lapply(X_df, function(col) {
   }
 }))
 
-# 4. Convert to numeric matrix for xgboost
-X <- as.matrix(X_df)
 
-# 5. Define label vector
+X <- as.matrix(X_df)
 y <- data_clean$percent_adults_with_obesity
 
-# 6. Train XGBoost model
 xgb_model <- xgboost(
   data = X,
   label = y,
@@ -303,10 +297,8 @@ xgb_model <- xgboost(
   missing = NA
 )
 
-# 7. Get top 15 variable importance scores
 top_vi <- vi(xgb_model) %>% dplyr::slice_max(Importance, n = 15)
 
-# 8. Rename variables for nicer labels
 pretty_labels <- c(
   "percent_physically_inactive" = "Physically Inactive",
   "median_household_income" = "Median Household Income",
@@ -327,14 +319,13 @@ top_vi$Variable <- ifelse(
   top_vi$Variable
 )
 
-# 9. Plot variable importance
 vip(top_vi, aesthetics = list(fill = "steelblue")) +
   labs(y = "Variable Importance (Gain)", title = "Top 15 XGBoost Variable Importance")
 
 
 ```
 
-## Linear Regression Model (Obesity)
+## Linear Regression Model 
 
 ```{r linear_models}
 library(MASS)
@@ -351,7 +342,7 @@ lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inac
 summary(lm_simple)
 # plot(lm_simple) -> Moved to appendix
 
-huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive + county, 
     data = data_2025)
 
 summary(huber_model)
@@ -360,7 +351,7 @@ summary(huber_model)
 
 ```{r}
 library(broom)
-huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive + county, 
     data = data_2025)
 
 coef_df <- tidy(huber_model, conf.int = TRUE) |> 
@@ -391,26 +382,6 @@ huber_model_two <- rlm(logit_obesity ~ median_household_income + percent_limited
 
 ```
 
-## Food Environment Index appears to be a confounding variable
-
-```{r}
-# Clean data
-set.seed(10)
-data_2025 <- data_2025 |> na.omit()
-
-tree_fei <- train(food_environment_index ~ . - fips - state - county,
-              method = "rpart", tuneLength = 20,
-              trControl = trainControl(method = "cv", number = 10),
-              data = data_2025)
-
-# Top 10 predictors of FEI
-top_vi_fei <- head(vi(tree_fei), 10)
-
-vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
-  labs(y = "Variable Importance (Total Reduction in RSS)")
-
-```
-
 ```{r, eval=FALSE}
 summary(lm(logit_obesity ~ food_environment_index, data = data_2025))
 
@@ -421,69 +392,3 @@ summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_
 summary(rlm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + median_household_income, data = data_2025))
 
 ```
-
-### Summary
-
-During our exploratory data analysis (EDA), we observed that the **Food Environment Index (FEI)** had an inverse relationship with obesity — suggesting that counties with better food environments tend to have lower obesity rates. However, when we modeled this relationship using linear regression, the results became inconsistent. In one model, FEI appeared to be a strong negative predictor of obesity, but once we added its key components — **percent food insecure** and **percent with limited access to healthy foods** — FEI became statistically insignificant. This indicates that FEI is a **confounded composite variable**, meaning its apparent effect on obesity is actually driven by the variables that make up the index. Because of this, FEI is not a reliable standalone predictor of obesity.
-
-To understand what drives FEI and explore its confounding nature, I built a decision tree to identify the top predictors of FEI. The two most influential variables were **% food insecure** and **% with limited access to healthy foods**. I then ran a new model including these two variables along with **% physically inactive**, a variable already shown to be a strong predictor of obesity. In this final model, **physical inactivity remained highly significant**, **limited access to healthy food was not significant**, and **food insecurity showed a significant but unexpected negative association** with obesity. These findings suggest that it is more effective to use **specific, interpretable variables** related to food access rather than relying on an aggregated index like FEI. This approach provides clearer insights into the factors influencing obesity at the county level and helps guide more targeted recommendations.
-
-**Overall Key Takeaways:**
-
--   **Physical inactivity** is the strongest and most consistent predictor of obesity.
-
--   **% Food insecure** becomes a significant (negative) predictor once we control for physical inactivity and drop FEI.
-
--   **% Limited access to healthy food** is not significant in any specification we tested.
-
--   Relying on the FEI alone is misleading because its signal disappears once key components (and physical inactivity) are included.
-
-## Recommendations
-
-### Invest in Built Environments That Promote Daily Physical Activity
-
--   **TO DO:**
-
-    -   Improve sidewalk infrastructure in neighborhoods with high inactivity and obesity rates.
-
-    -   Add bike lanes, trails, and etc
-
-    -   Zone for mixed-use neighborhoods to encourage walkable errands.
-
--   **Real-world example**:
-
-    -   **Minneapolis, MN** implemented "Complete Streets" policies
-
-        -   Street design policy that supports walking, biking, transit, and driving
-
-        -   Includes sidewalks, bike lanes, crosswalks, lighting, and traffic calming
-
-        -   Makes daily physical activity safer and more accessible
-
-    -   **Safe Routes to School** programs in **California**
-
-        -   National program to help students walk or bike safely to school
-
-        -   Improves sidewalks, crosswalks, signage, and adds crossing guards
-
-        -   Helps form lifelong physical activity habits starting in childhood
-
-### Deploy Mobile Markets and Pop-Up Grocery Stands in High-Need Areas
-
--   **TO DO:**
-
-    -   Use mobile grocery vans or pop-up farmers' markets in areas that lack supermarkets
-
-    -   Accept **SNAP/WIC** benefits and keep prices affordable
-
-        -   SNAP is essentially food stamps
-
-        -   WIC is federal assistance for pregnant women, new mothers, and children under 5. Provides vouchers for nutritious foods, baby formula, and health care referrals and nutrition education
-
-    -   Pair markets with cooking demonstrations or physical activity events
-
--   **Real-world example**:
-
-    -   **Veggie Van (North Carolina)** brings produce into underserved neighborhoods and has partnered with local health departments
-
-    -   **Fresh Moves Mobile Market (Chicago)** operates a bus converted into a traveling produce market for low-access communities

@@ -199,20 +199,24 @@ Meanwhile, Food Environment Index (FEI) shows a negative association, suggesting
 
 To further examine the relationships among our predictor variables, we created a correlation matrix.
 
-```{r cor_matrix}
+```{r}
 #| fig-width: 5 
 #| fig-height: 3.5 
 #| fig-cap: "Figure 3: Correlation matrix showing relationships among obesity rate, physical inactivity, food access measures, income, and rural population."  
 
 library(corrplot)
+library(ggcorrplot)
+library(dplyr)
 
 corr_data <- data_2025 |> 
-  dplyr::select(percent_adults_with_obesity,
-         percent_physically_inactive,
-         percent_limited_access_to_healthy_foods,
-         food_environment_index,
-         median_household_income,
-         percent_rural |> 
+  dplyr::select(
+    percent_adults_with_obesity,
+    percent_physically_inactive,
+    percent_limited_access_to_healthy_foods,
+    food_environment_index,
+    median_household_income,
+    percent_rural
+  ) |> 
   rename(
     "Obesity Rate" = percent_adults_with_obesity,
     "Physical Inactivity" = percent_physically_inactive,
@@ -223,6 +227,7 @@ corr_data <- data_2025 |>
   )
 
 cor_matrix <- cor(corr_data, use = "complete.obs")
+
 corrplot(cor_matrix, 
          method = "color",
          type = "upper",
@@ -231,6 +236,7 @@ corrplot(cor_matrix,
          addCoef.col = "black",
          number.cex = 0.8,
          diag = FALSE)
+
 ```
 
 We found a strong correlation (0.78) between the Food Environment Index and limited access to healthy food.

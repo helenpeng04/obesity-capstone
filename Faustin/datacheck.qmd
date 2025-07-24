@@ -135,7 +135,9 @@ data_2025 <- data_2025 |>
 ```
 
 # Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors
+
 # EDA Analysis Presentation R Code
+
 ```{r}
 # Load required libraries
 library(usmap)
@@ -151,11 +153,15 @@ library(MASS)
 library(knitr)
 library(kableExtra)
 ```
+
 # Assuming your data is loaded as data_2025
+
 # Handle missing data as described
-# data_2025 <- your_data_loading_code_here
+
+# data_2025 \<- your_data_loading_code_here
 
 # ===== SLIDE 6: Obesity Map =====
+
 ```{r}
 create_obesity_map <- function(data) {
   min_val <- floor(min(data$percent_adults_with_obesity, na.rm = TRUE))
@@ -182,6 +188,7 @@ create_obesity_map <- function(data) {
 ```
 
 # ===== SLIDE 7: Scatterplot Analysis =====
+
 ```{r}
 # Visualization 1: Physical Inactivity vs Obesity
 create_inactivity_plot <- function(data) {
@@ -213,6 +220,7 @@ create_food_access_plot <- function(data) {
 ```
 
 # ===== SLIDE 8: Food Environment Index Analysis =====
+
 ```{r}
 # Visualization 3: FEI vs Obesity
 create_fei_plot <- function(data) {
@@ -232,6 +240,7 @@ create_fei_plot <- function(data) {
 ```
 
 # ===== SLIDE 9: CART Variable Importance for FEI =====
+
 ```{r}
 create_fei_importance <- function(data) {
   # Clean data
@@ -261,6 +270,7 @@ create_fei_importance <- function(data) {
 ```
 
 # ===== SLIDE 10: Correlation Matrix =====
+
 ```{r}
 create_correlation_matrix <- function(data) {
   # Select key variables for correlation
@@ -292,6 +302,7 @@ create_correlation_matrix <- function(data) {
 ```
 
 # ===== SLIDE 11: County-Level Analysis =====
+
 ```{r}
 create_county_summary <- function(data) {
   # Summary statistics table
@@ -338,6 +349,7 @@ create_scatter_matrix <- function(data) {
 ```
 
 # ===== SLIDE 12: Regional Comparison =====
+
 ```{r}
 # Add region classification function
 classify_region <- function(state) {
@@ -388,6 +400,7 @@ create_regional_analysis <- function(data) {
 ```
 
 # ===== SLIDE 13: Huber Regression Models =====
+
 ```{r}
 create_huber_models <- function(data) {
   # Clean data
@@ -458,6 +471,7 @@ create_huber_models <- function(data) {
 ```
 
 # ===== ADDITIONAL HELPER FUNCTIONS =====
+
 ```{r}
 # Function to create a nice summary table for presentation
 create_model_comparison_table <- function(model1, model2) {
@@ -591,6 +605,7 @@ identify_extreme_counties <- function(data) {
 ```
 
 # ===== EXAMPLE USAGE =====
+
 ```{r}
 # Uncomment and run these functions with your data
 
@@ -730,7 +745,9 @@ run_slide_analysis <- function(data_2025, slide_number) {
   )
 }
 ```
+
 # ===== EXAMPLE USAGE - SAFE EXECUTION =====
+
 ```{r}
 # Run individual slides safely:
  run_slide_analysis(data_2025, "6")   # Obesity map

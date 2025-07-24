@@ -145,6 +145,14 @@ physical_obesity_plot <- data_2025 |>
     x = "% Physically Inactive",
     y = "% Adults with Obesity"
   ) 
+healthy_plot <- data_2025 |>
+  ggplot(aes(x = percent_limited_access_to_healthy_foods, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Limited Access to Healthy Foods",
+    y = "% Adults with Obesity"
+  ) 
 
 food_obesity_plot <- data_2025 |>
   ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
@@ -154,10 +162,8 @@ food_obesity_plot <- data_2025 |>
     x = "Food Environment Index (0 = worst, 10 = best)",
     y = "% Adults with Obesity"
   ) 
-combined_plot <- physical_obesity_plot + food_obesity_plot
+combined_plot <- physical_obesity_plot + healthy_plot + food_obesity_plot 
 
-# Save with larger dimensions
-ggsave("combined_plot.png", combined_plot, width = 20, height = 15, dpi = 800)
 
 combined_plot
 ```
@@ -247,7 +253,9 @@ huber_model_two <- rlm(logit_obesity ~ median_household_income + percent_limited
     data = huber_2025)
 
 ```
+
 ## Surprisingly, the Food Environment Index does not rank among the top predictors
+
 ```{r vip}
 
 # CART-algorthim regression tree 10 fold CV
@@ -296,7 +304,7 @@ vip(top_vi, aesthetics = list(fill = "steelblue")) +
 
 -   **Access to healthy food** alone is misleading and may not reduce obesity if physical inactivity limits people’s ability to utilize these resources effectively.
 
-- The **Food Environment Index (FEI)** accounts for more variability in obesity rates by combining both food access and economic barriers, offering a more holistic measure than either factor alone.
+-   The **Food Environment Index (FEI)** accounts for more variability in obesity rates by combining both food access and economic barriers, offering a more holistic measure than either factor alone.
 
 -   Factors such as **Smoking** and **Excessive Drinking** are also significant predictors of obesity rates
 
@@ -331,9 +339,7 @@ vip(top_vi, aesthetics = list(fill = "steelblue")) +
 
 -   Correlation Matrix
 -   Diagnostic Plots for Linear Regression Models
--  
-##Apendix
-### Food Environment Index appears to be a confounding variable {.smaller}
+-   ##Apendix \### Food Environment Index appears to be a confounding variable {.smaller}
 
 ```{r}
 # Clean data
@@ -381,8 +387,7 @@ summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_
 
 ```
 
-##Appendix 
-### Modeling and Comparison
+##Appendix \### Modeling and Comparison
 
 ```{r bivariate_model}
 # Create model comparison summary table
@@ -441,6 +446,69 @@ model_comparison |>
   )
 ```
 
+```{r}
+library(MASS)
+library(broom)
+library(tidyverse)
+library(knitr)
+library(patchwork)
+
+# Prepare data
+huber_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+# Fit models
+model1 <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+              data = huber_2025)
+model2 <- rlm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods, 
+              data = huber_2025)
+
+# Calculate comparison metrics
+comparison_stats <- tibble(
+  Model = c("Food Env. Index + Inactivity", "Inactivity + Food Access"),
+  R_squared = c(
+    1 - (sum(residuals(model1)^2) / sum((huber_2025$logit_obesity - mean(huber_2025$logit_obesity))^2)),
+    1 - (sum(residuals(model2)^2) / sum((huber_2025$logit_obesity - mean(huber_2025$logit_obesity))^2))
+  ),
+  AIC = c(AIC(model1), AIC(model2)),
+  BIC = c(BIC(model1), BIC(model2)),
+  MAE = c(mean(abs(residuals(model1))), mean(abs(residuals(model2))))
+) |>
+  mutate(across(where(is.numeric), ~round(., 3)))
+
+# Print formatted comparison table
+kable(comparison_stats, 
+      caption = "Huber Regression Model Comparison",
+      col.names = c("Model", "R²", "AIC", "BIC", "MAE"),
+      align = c("l", "c", "c", "c", "c"),
+      format.args = list(big.mark = ",")) |>
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = FALSE,
+                position = "center")
+
+# Create and display coefficient plots
+p1 <- coef_plot(model1, "Model 1: Food Environment Index + Inactivity")
+p2 <- coef_plot(model2, "Model 2: Inactivity + Food Access")
+
+# Create and display residual plot
+resid_plot <- ggplot(resid_data, aes(x = fitted, y = residuals)) +
+  geom_point(alpha = 0.5, aes(color = model)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "darkred") +
+  facet_wrap(~model, scales = "free") +
+  labs(title = "Model Residual Diagnostics", 
+       x = "Fitted Values", y = "Residuals") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Arrange all plots
+(p1 + p2) / resid_plot +
+  plot_annotation(title = "Huber Regression Model Analysis",
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 16)))
+```
 
 ## Appendix
 
@@ -594,3 +662,83 @@ ggplot(data.frame(resid = residuals(lm_base)), aes(sample = resid)) +
 <!-- A wealthy county with bad food access but low obesity might sit here. -->
 
 <!-- Rural counties with unique trends could dominate the model unfairly. -->
+
+
+```{r}
+library(reshape2)
+library(ggplot2)
+
+# Select and rename variables
+cor_vars <- data_2025 |> 
+  dplyr::select(
+    `Obesity Rate` = percent_adults_with_obesity,
+    `Physical Inactivity` = percent_physically_inactive,
+    `Limited Food Access` = percent_limited_access_to_healthy_foods,
+    `Food Environment Index` = food_environment_index,
+    `Median Income` = median_household_income,
+    `Rural Population` = percent_rural
+  ) |> 
+  na.omit()
+
+# Compute correlation matrix
+cor_matrix <- round(cor(cor_vars), 2)
+
+# Melt into long format
+cor_melt <- melt(cor_matrix)
+
+# Keep only upper triangle
+cor_melt <- cor_melt |> 
+  filter(as.numeric(Var1) <= as.numeric(Var2))
+
+# Plot
+ggplot(cor_melt, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = value), size = 4) +
+  scale_fill_gradient2(low = "#B2182B", mid = "white", high = "#2166AC", 
+                       midpoint = 0, limit = c(-1, 1), name = "Corr") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+    panel.grid = element_blank(),
+    axis.title = element_blank()
+  ) +
+  coord_fixed() +
+  labs(title = "Correlation Matrix")
+
+```
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(corrplot)
+library(ggcorrplot)
+
+# Select relevant variables for correlation analysis
+corr_data <- data_2025 %>%
+  select(percent_adults_with_obesity,
+         percent_physically_inactive,
+         percent_limited_access_to_healthy_foods,
+         food_environment_index,
+         median_household_income,
+         percent_rural) %>%
+  rename(
+    "Obesity Rate" = percent_adults_with_obesity,
+    "Physical Inactivity" = percent_physically_inactive,
+    "Limited Food Access" = percent_limited_access_to_healthy_foods,
+    "Food Environment Index" = food_environment_index,
+    "Median Income" = median_household_income,
+    "Rural Population" = percent_rural
+  )
+
+# Calculate correlation matrix
+cor_matrix <- cor(corr_data, use = "complete.obs")
+
+# Create correlation plot
+corrplot(cor_matrix, 
+         method = "color",
+         type = "upper",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black",
+         number.cex = 0.8,
+         diag = FALSE)
+```

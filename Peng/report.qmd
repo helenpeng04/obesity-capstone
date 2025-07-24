@@ -333,7 +333,7 @@ ggplot(combined_coefs, aes(x = OR, y = term, color = model)) +
 
 ```
 
-In **Model 1**, which includes physical inactivity and the Food Environment Index (FEI) as predictors, both variables are statistically significant (*t* = 56.1 and *t* = 5.5, respectively).
+In **Model 1**, which includes physical inactivity and the Food Environment Index (FEI) as predictors, b**oth variables are statistically significant** (*t* = 56.1 and *t* = 5.5, respectively).
 A 1% increase in physical inactivity is associated with approximately a **3.1% increase in the odds** of adult obesity, holding FEI constant.
 In contrast, a 1-point increase in FEI is associated with a **1.3% increase in the odds** of obesity, controlling for physical inactivity.
 
@@ -341,7 +341,7 @@ The positive association between FEI and obesity is somewhat counterintuitive, a
 One possible explanation is that when physical inactivity is held constant, the benefits of food access, such as walking to nearby stores or choosing healthier options, may no longer influence obesity rates, since those behaviors are effectively accounted for in the model.
 Additionally, the positive coefficient for FEI may reflect confounding factors not captured in our model, such as urbanization or broader socioeconomic conditions that simultaneously influence food environment scores and obesity prevalence.
 
-In **Model 2**, which includes physical inactivity and limited access to healthy food as predictors, physical inactivity remains statistically significant (*t* = 63.9), while limited access is not (*t* = –0.97).
+In **Model 2**, which includes physical inactivity and limited access to healthy food as predictors, **physical inactivity remains statistically significant** (*t* = 63.9), **while limited access is not** (*t* = –0.97).
 A 1% increase in physical inactivity is associated with approximately a **2.9% increase in the odds** of adult obesity, holding limited access constant.
 
 Across both models, **physical inactivity consistently emerges as a strong and robust predictor** of adult obesity, with a larger effect size than either FEI or limited food access.

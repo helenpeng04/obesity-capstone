@@ -1,9 +1,9 @@
 ---
 title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors"
 author:
+  - Jordon Faustin
   - Helen Peng
   - Anvith Thumma
-  - Jordon Faustin
 date: "July 25, 2025"
 toc: true
 format:
@@ -112,37 +112,12 @@ data_2025 <- data_2025 |>
 
 ### Exploratory Data Analysis
 
-```{r scatterplot}
-#| fig-width: 5
-#| fig-height: 3.5
-#| fig-cap: "Figure 1: Scatter plots illustrating a positive association between physical inactivity and obesity rates, and a negative association between healthy food access and obesity rates."
-
-library(patchwork)
-physical_obesity_plot <- data_2025 |>
-  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
-  geom_point(alpha = 0.7) +
-  geom_smooth(method = "gam", se = FALSE) +
-  labs(
-    x = "% Physically Inactive",
-    y = "% Adults with Obesity"
-  ) 
-
-food_obesity_plot <- data_2025 |>
-  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
-  geom_point(alpha = 0.7) +
-  geom_smooth(method = "gam", se = FALSE) +
-  labs(
-    x = "Food Environment Index",
-    y = "% Adults with Obesity"
-  ) 
-
-physical_obesity_plot + food_obesity_plot
-```
+We began our exploratory analysis by visualizing the geographic distribution of adult obesity rates across the United States.
 
 ```{r obesity_map}
 #| fig-width: 5
 #| fig-height: 3.5
-#| fig-cap: "Figure 2: Choropleth map showing substantial regional variation in adult obesity rates across U.S. counties in 2025, with higher prevalence observed in the Midwest and Southeast"
+#| fig-cap: "Figure 2: Choropleth map showing substantial regional variation in adult obesity rates across U.S. counties in 2025."
 
 library(usmap)
 library(viridis)
@@ -169,6 +144,43 @@ plot_usmap(data = data_2025, values = "percent_adults_with_obesity", color = NA)
   )
 ```
 
+From the map, we observe that obesity rates are generally higher in the Southern states and parts of the Midwest, whereas lower rates tend to be concentrated in the Western and Northeastern regions.
+This pattern suggests potential regional influences such as socioeconomic conditions, healthcare access, or cultural norms that may contribute to differences in obesity prevalence.
+
+Next, we examined how obesity rates relate to key predictor variables through a series of scatter plots.
+
+```{r scatterplot}
+#| fig-width: 5 
+#| fig-height: 3.5 
+#| fig-cap: "Figure 1: Scatter plots illustrating the relationship between predictor variables and obesity rates."  
+
+library(patchwork) 
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(x = "% Physically Inactive", y = "% Adults with Obesity")  
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +  
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs( x = "Food Environment Index", y = "% Adults with Obesity")   
+
+
+physical_obesity_plot + food_obesity_plot
+```
+
+These scatterplots reveal a positive association between physical inactivity and obesity rates, indicating that counties with higher levels of inactivity tend to have higher obesity prevalence.
+In contrast, limited access to healthy food shows no clear association with obesity rates.
+Meanwhile, Food Environment Index (FEI) shows a negative association, suggesting that counties with more favorable food environments tend to have lower obesity rates.
+
+We then created a correlation matrix to
+
+```{r cor_matrix}
+
+```
+
 ## Methods
 
 Based on our exploratory data analysis, we found that the Food Environment Index (FEI) was a more comprehensive predictor than the percentage of limited access to healthy food, and thus selected it for modeling.
@@ -192,7 +204,7 @@ However, our diagnostic analysis revealed violations of these assumptions, notab
 To address this, we refit the model using Huber regression, a robust technique that reduces the influence of outliers.
 
 To further evaluate the predictive utility of our selected variables, we refit the same model using limited access to healthy food in place of the Food Environment Index.
-This parallel model allowed us to directly compare the two predictors and reinforce the conclusion that FEI may offer a stronger and more comprehensive explanation of obesity variation across counties.
+This second model allowed us to directly compare the two predictors and reinforce the conclusion that FEI may offer a stronger and more comprehensive explanation of obesity variation across counties.
 
 ## Results
 
@@ -253,4 +265,4 @@ To build on these findings, several avenues for future research are recommended.
 First, incorporating data on the number of parks, wellness centers, and recreational facilities per county—and mapping their distribution—can help clarify the role of environmental supports for physical activity.
 Additionally, analyzing temporal trends in fitness facility usage may offer insights into behavioral patterns and access disparities.
 Future studies should also explore other relevant variables that could influence obesity, such as public transportation availability, climate, and healthcare access.
-Finally, applying causal inference methods, such as instrumental variable analysis or matching methods, could help determine whether physical inactivity directly contributes to obesity, as current results are based on observed correlations and cannot confirm causation.
+Finally, applying causal inference methods, such as instrumental variable analysis or matching methods, could help determine whether physical inactivity actually causes obesity, as current results are based on observed correlations and cannot confirm causation.

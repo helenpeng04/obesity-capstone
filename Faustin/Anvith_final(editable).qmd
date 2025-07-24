@@ -421,3 +421,7 @@ To understand what drives FEI and explore its confounding nature, I built a deci
     -   **Veggie Van (North Carolina)** brings produce into underserved neighborhoods and has partnered with local health departments
 
     -   **Fresh Moves Mobile Market (Chicago)** operates a bus converted into a traveling produce market for low-access communities
+
+## Fuel or Fire {.center}
+
+There is a relationship between obesity rates, physical inactivity, and healthy food environments. Now we want to confirm whether we're looking at the "Fuel" or the "Fire" of the situation. Reasoning behind this process is to clarify that we are targeting a driver and not a symptom.

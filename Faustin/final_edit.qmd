@@ -206,8 +206,48 @@ obesity_map
 
 There is a relationship between obesity rates, physical inactivity, and healthy food environments. Now we want to confirm whether we're looking at the "Fuel" or the "Fire" of the situation. Reasoning behind this process is to clarify that we are targeting a driver and not a symptom.
 
-## Surprisingly, the Food Environment Index does not rank among the top predictors
+## Huber Regression Model (Obesity)
 
+```{r Huber}
+library(broom)
+library(MASS)
+
+huber_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = huber_2025)
+
+coef_df <- tidy(huber_model, conf.int = TRUE) |> 
+  filter(term != "(Intercept)")
+
+coef_df <- coef_df |>
+  mutate(
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+                  "food_environment_index" = "Food Environment Index",
+                  "percent_physically_inactive" = "Physically Inactive (%)")
+  )
+
+ggplot(coef_df, aes(x = OR, y = term)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_errorbarh(aes(xmin = OR_low, xmax = OR_high), height = 0.2, color = "gray30", size = 1.2) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +  # no effect line
+  labs(
+    x = "Odds Ratio (Effect Size)",
+    y = NULL,
+  ) 
+
+huber_model_two <- rlm(logit_obesity ~ median_household_income + percent_limited_access_to_healthy_foods + percent_physically_inactive, 
+    data = huber_2025)
+
+```
+## Surprisingly, the Food Environment Index does not rank among the top predictors
 ```{r vip}
 
 # CART-algorthim regression tree 10 fold CV
@@ -250,74 +290,15 @@ vip(top_vi, aesthetics = list(fill = "steelblue")) +
 
 ```
 
-## Modeling and Comparison
-
-```{r bivariate_model}
-# Create model comparison summary table
-library(MASS)
-library(knitr)
-
-# Prepare data and fit models
-model_data_2025 <- data_2025 |> 
-  mutate(
-    obesity_prop = percent_adults_with_obesity / 100,
-    logit_obesity = log(obesity_prop / (1 - obesity_prop))
-  )
-
-lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
-    data = model_data_2025)
-
-huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
-    data = model_data_2025)
-
-# Create model comparison table
-model_comparison <- data.frame(
-  Model = c("Linear Model (OLS)", "Huber Robust Model"),
-  `Food Environment Index` = c(
-    sprintf("%.4f (%.4f)", 
-            coef(lm_simple)[2], 
-            summary(lm_simple)$coefficients[2, 2]),
-    sprintf("%.4f (%.4f)", 
-            coef(huber_model)[2], 
-            summary(huber_model)$coefficients[2, 2])
-  ),
-  `Physically Inactive` = c(
-    sprintf("%.4f (%.4f)", 
-            coef(lm_simple)[3], 
-            summary(lm_simple)$coefficients[3, 2]),
-    sprintf("%.4f (%.4f)", 
-            coef(huber_model)[3], 
-            summary(huber_model)$coefficients[3, 2])
-  ),
-  `R-squared` = c(
-    sprintf("%.4f", summary(lm_simple)$r.squared),
-    "N/A"
-  ),
-  `Residual SE` = c(
-    sprintf("%.4f", summary(lm_simple)$sigma),
-    sprintf("%.4f", huber_model$s)
-  )
-)
-
-# Display table
-model_comparison |> 
-  kable(
-    digits = 4,
-    col.names = c("Model", "Food Environment Index (SE)", "Physically Inactive (SE)", 
-                  "R-squared", "Residual SE"),
-    caption = "Comparison of Linear and Huber Robust Models for Obesity Prediction"
-  )
-```
-
 ## Key Takeaways
 
 -   **Physical Inactivity** is the strongest and most consistent predictor of obesity.
 
--   **Food Insecurity Percentage** becomes a statistically significant predictor once we control for physical inactivity and drop FEI.
+-   **Access to healthy food** alone is misleading and may not reduce obesity if physical inactivity limits people’s ability to utilize these resources effectively.
 
--   **Access to Healthy Food Percentage** is not statistically significant in any specification we tested.
+- The **Food Environment Index (FEI)** accounts for more variability in obesity rates by combining both food access and economic barriers, offering a more holistic measure than either factor alone.
 
--   Relying on the FEI alone is misleading because its signal disappears once key components (and physical inactivity) are included.
+-   Factors such as **Smoking** and **Excessive Drinking** are also significant predictors of obesity rates
 
 ## Recommendations
 
@@ -398,6 +379,66 @@ summary(lm(logit_obesity ~ food_environment_index + percent_limited_access_to_he
 
 summary(lm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods + percent_food_insecure, data = data_2025))
 
+```
+
+##Appendix 
+### Modeling and Comparison
+
+```{r bivariate_model}
+# Create model comparison summary table
+library(MASS)
+library(knitr)
+
+# Prepare data and fit models
+model_data_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+lm_simple <- lm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = model_data_2025)
+
+huber_model <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+    data = model_data_2025)
+
+# Create model comparison table
+model_comparison <- data.frame(
+  Model = c("Linear Model (OLS)", "Huber Robust Model"),
+  `Food Environment Index` = c(
+    sprintf("%.4f (%.4f)", 
+            coef(lm_simple)[2], 
+            summary(lm_simple)$coefficients[2, 2]),
+    sprintf("%.4f (%.4f)", 
+            coef(huber_model)[2], 
+            summary(huber_model)$coefficients[2, 2])
+  ),
+  `Physically Inactive` = c(
+    sprintf("%.4f (%.4f)", 
+            coef(lm_simple)[3], 
+            summary(lm_simple)$coefficients[3, 2]),
+    sprintf("%.4f (%.4f)", 
+            coef(huber_model)[3], 
+            summary(huber_model)$coefficients[3, 2])
+  ),
+  `R-squared` = c(
+    sprintf("%.4f", summary(lm_simple)$r.squared),
+    "N/A"
+  ),
+  `Residual SE` = c(
+    sprintf("%.4f", summary(lm_simple)$sigma),
+    sprintf("%.4f", huber_model$s)
+  )
+)
+
+# Display table
+model_comparison |> 
+  kable(
+    digits = 4,
+    col.names = c("Model", "Food Environment Index (SE)", "Physically Inactive (SE)", 
+                  "R-squared", "Residual SE"),
+    caption = "Comparison of Linear and Huber Robust Models for Obesity Prediction"
+  )
 ```
 
 

@@ -1,0 +1,752 @@
+---
+title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors"
+subtitle: "SURE 2025"
+author:
+  - "<strong>Helen Peng</strong><br><small>Carnegie Mellon University</small>"
+  - "<strong>Jordan Faustin</strong><br><small>Howard University</small>"
+  - "<strong>Anvith Thumma</strong><br><small>Arizona State University</small>"
+format: 
+  revealjs: 
+    embed-resources: true
+    theme: simple
+    slide-number: true
+    smaller: true
+    include-after-body: |
+      <style>
+        .reveal .slides section.title-slide {
+          text-align: center;
+        }
+        .reveal .slides section.title-slide .author p {
+          margin: 1em 0;
+          line-height: 1.5;
+        }
+      </style>
+editor: visual
+---
+
+## Significance
+
+-   **Public Health Implications:** <br> Obesity is a major contributor to rising healthcare costs and chronic diseases such as diabetes, heart disease, and cancer.
+
+-   **Social Factors of Health:** <br> Physical Inactivity and food access are modifiable factors linked to obesity. In turn, studying their impact can highlight how our environment and infrastructure, like our parks, grocery stores, and schools, can shape our health outcomes.
+
+-   **Policy and Community Planning:** <br> New information revealed through findings can help to make informed policies for urban planning in under-served areas and school/workplace wellness programs.
+
+## Does physical inactivity level and access to healthy food affect obesity rate at the county level? {.center}
+
+## Agenda
+
+-   **Data Overview**
+-   **Initial Analysis**
+-   **Understanding Direction**
+-   **Modeling and Comparison**
+-   **Discussion**
+-   **Recommendations**
+-   **Appendix**
+
+## Data Overview
+
+-   **Observations:**
+
+    -   Data at the county level across all 50 U.S. states in 2025
+
+-   **Variables of Interest:**
+
+    -   \% Adults with Obesity
+
+    -   \% Physically Inactive
+
+    -   (FEI) Food Environment Index (1-10)
+
+    -   \% Limited Access to Healthy Foods
+
+    -   State and County Identifiers
+
+-   **Handling Missing Data:**
+
+    -   If data on Food Environment Index or Physical Inactivity was missing for a county we used the state average.
+
+    -   Seven counties that did not have data for obesity rate, our response variable and so, we dropped those counties to do a complete case analysis.
+
+```{r setup}
+library(knitr)
+opts_chunk$set(message=FALSE, warning=FALSE, fig.align="center",
+               echo=FALSE, tidy=TRUE)
+```
+
+```{r cleaning}
+library(readxl)
+library(tidyverse)
+theme_set(theme_bw())
+
+data_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Additional Measure Data", skip = 1)
+
+food_index_2025 <- read_excel("C:/Users/jorda/Desktop/Capstone Obesity/2025_CHRD.xlsx", sheet = "Select Measure Data", skip = 1)
+
+data_2025 <- data_2025 |> 
+  janitor::clean_names() 
+
+food_index_2025 <- food_index_2025 |> 
+  janitor::clean_names() 
+
+data_2025 <- merge(data_2025, food_index_2025, by = "fips") 
+data_2025 <- data_2025[, !grepl("percent_ci", names(data_2025))]
+data_2025 <- data_2025[, !grepl("national_z", names(data_2025))]
+data_2025 <- data_2025[, !grepl("injury_death", names(data_2025))]
+data_2025 <- data_2025[, !grepl("percentile", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_white", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_hispanic", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_native", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_aian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_asian", names(data_2025))]
+data_2025 <- data_2025[, !grepl("_black", names(data_2025))]
+data_2025 <- data_2025[, !grepl("dentist", names(data_2025))]
+data_2025 <- data_2025[, !grepl("unreliable", names(data_2025))]
+data_2025 <- data_2025[, !grepl("deaths", names(data_2025))]
+
+drop_cols <- c("child_mortality_rate","hiv_prevalence_rate", " suicide_rate_age_adjusted", "crude_rate","teen_birth_rate","chlamydia_rate","number_chlamydia_cases", "drug_overdose_mortality_rate","other_primary_care_provider_rate", "other_primary_care_provider_ratio","percent_census_participation", "average_grade_performance_252", " average_grade_performance_246","cohort_size","gender_pay_gap","segregation_index_287","homicide_rate","motor_vehicle_mortality_rate", "percent_disconnected_youth","firearm_fatalities_rate","percent_lacking_support", "percent_low_birth_weight","number_primary_care_physicians","primary_care_physicians_ratio","primary_care_physicians_rate","number_mental_health_providers", "mental_health_provider_rate", "mental_health_provider_ratio", "visits_per_service_area_population", "presence_of_water_violation","average_daily_pm2_5", "state.y","county.y", "percent_with_annual_mammogram", "preventable_hospitalization_rate", "years_of_potential_life_lost_rate","number_firearm_fatalities","child_care_centers_per_1_000_children", "number_firearm_fatalities", "number_child_care_centers","spending_per_pupil","segregation_index_258","high_school_graduation_rate","average_grade_performance_246","disaster_declarations","weeks_in_moderate_or_greater_drought", "life_expectancy", "severe_housing_cost_burden", "percent_adults_with_diabetes","suicide_rate_age_adjusted","percent_fair_or_poor_health", "percent_voter_turnout", "percent_with_disability", "age_adjusted_death_rate", "percent_drive_alone_to_work", "income_ratio", "mens_median_earnings", "womens_median_earnings", "infant_mortality_rate","percent_uninsured_children","percent_uninsured_adults","percent_with_access_to_exercise_opportunities")
+
+data_2025 <- data_2025[,!(names(data_2025) %in% drop_cols)]
+
+data_2025 <- data_2025  |> 
+  rename(
+    county = county.x,
+    state = state.x
+  )
+
+old_ct_fips <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")  
+
+statewide_food_index <- data_2025 |> 
+  filter(is.na(county) & !is.na(food_environment_index)) |> 
+  dplyr::select(state, food_environment_index) |> 
+  rename(statewide_food_environment_index = food_environment_index)
+
+data_2025 <- data_2025 |> 
+  filter(!(fips %in% old_ct_fips)) |> 
+  left_join(statewide_food_index, by = "state") |> 
+  mutate(
+    food_environment_index = if_else(
+      is.na(food_environment_index) & !is.na(county),
+      statewide_food_environment_index,
+      food_environment_index),
+      days_above_90f = if_else(days_above_90f > 365, 365, days_above_90f)) |> 
+  dplyr::select(-statewide_food_environment_index) |> 
+  filter(!is.na(percent_adults_with_obesity))
+```
+
+# Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environment Factors
+# EDA Analysis Presentation R Code
+```{r}
+# Load required libraries
+library(usmap)
+library(viridis)
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(rpart)
+library(vip)
+library(corrplot)
+library(mgcv)
+library(MASS)
+library(knitr)
+library(kableExtra)
+```
+# Assuming your data is loaded as data_2025
+# Handle missing data as described
+# data_2025 <- your_data_loading_code_here
+
+# ===== SLIDE 6: Obesity Map =====
+```{r}
+create_obesity_map <- function(data) {
+  min_val <- floor(min(data$percent_adults_with_obesity, na.rm = TRUE))
+  max_val <- ceiling(max(data$percent_adults_with_obesity, na.rm = TRUE))
+  custom_breaks <- seq(min_val, max_val, length.out = 5)
+  
+  plot_usmap(data = data, values = "percent_adults_with_obesity", color = NA) +
+    scale_fill_viridis_c(
+      option = "inferno",
+      direction = -1,
+      limits = c(min_val, max_val),
+      breaks = custom_breaks,
+      labels = round(custom_breaks, 1),
+      name = "Obesity Rate (%)",
+      na.value = "grey90"
+    ) +
+    theme(
+      legend.position = "left",
+      legend.title = element_text(face = "bold"),
+      plot.title = element_text(hjust = 0.5, size = 14, face = "bold")
+    ) +
+    labs(title = "County-Level Obesity Rates Across the United States")
+}
+```
+
+# ===== SLIDE 7: Scatterplot Analysis =====
+```{r}
+# Visualization 1: Physical Inactivity vs Obesity
+create_inactivity_plot <- function(data) {
+  ggplot(data, aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+    geom_point(alpha = 0.6, color = "steelblue") +
+    geom_smooth(method = "gam", formula = y ~ s(x), color = "red", se = TRUE) +
+    labs(
+      title = "Physical Inactivity vs Obesity Rate",
+      x = "Percent Physically Inactive (%)",
+      y = "Percent Adults with Obesity (%)"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+}
+
+# Visualization 2: Access to Healthy Food vs Obesity
+create_food_access_plot <- function(data) {
+  ggplot(data, aes(x = percent_limited_access_to_healthy_foods, y = percent_adults_with_obesity)) +
+    geom_point(alpha = 0.6, color = "darkgreen") +
+    geom_smooth(method = "gam", formula = y ~ s(x), color = "red", se = TRUE) +
+    labs(
+      title = "Limited Access to Healthy Foods vs Obesity Rate",
+      x = "Percent with Limited Access to Healthy Foods (%)",
+      y = "Percent Adults with Obesity (%)"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+}
+```
+
+# ===== SLIDE 8: Food Environment Index Analysis =====
+```{r}
+# Visualization 3: FEI vs Obesity
+create_fei_plot <- function(data) {
+  ggplot(data, aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+    geom_point(alpha = 0.6, color = "purple") +
+    geom_smooth(method = "gam", formula = y ~ s(x), color = "red", se = TRUE) +
+    labs(
+      title = "Food Environment Index vs Obesity Rate",
+      x = "Food Environment Index (1-10 scale)",
+      y = "Percent Adults with Obesity (%)",
+      subtitle = "Higher FEI indicates better food environment"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+          plot.subtitle = element_text(hjust = 0.5))
+}
+```
+
+# ===== SLIDE 9: CART Variable Importance for FEI =====
+```{r}
+create_fei_importance <- function(data) {
+  # Clean data
+  set.seed(10)
+  data_clean <- data %>% na.omit()
+  
+  # Train CART model
+  tree_fei <- train(food_environment_index ~ . - fips - state - county,
+                    method = "rpart", 
+                    tuneLength = 20,
+                    trControl = trainControl(method = "cv", number = 10),
+                    data = data_clean)
+  
+  # Get top 10 predictors
+  top_vi_fei <- head(vi(tree_fei), 10)
+  
+  # Create variable importance plot
+  vip(top_vi_fei, aesthetics = list(fill = "darkgreen")) +
+    labs(
+      title = "Top 10 Predictors of Food Environment Index",
+      y = "Variable Importance (Total Reduction in RSS)",
+      x = "Variables"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+}
+```
+
+# ===== SLIDE 10: Correlation Matrix =====
+```{r}
+create_correlation_matrix <- function(data) {
+  # Select key variables for correlation
+  key_vars <- data %>%
+    dplyr::select(percent_adults_with_obesity, 
+           percent_physically_inactive,
+           food_environment_index,
+           percent_limited_access_to_healthy_foods,
+           percent_food_insecure,
+           median_household_income,
+           percent_children_in_poverty,
+           percent_some_college) %>%
+    na.omit()
+  
+  # Calculate correlation matrix
+  cor_matrix <- cor(key_vars)
+  
+  # Create correlation plot
+  corrplot(cor_matrix, 
+           method = "color",
+           type = "upper",
+           order = "hclust",
+           tl.cex = 0.8,
+           tl.col = "black",
+           tl.srt = 45,
+           title = "Correlation Matrix: Key Health and Socioeconomic Variables",
+           mar = c(0,0,2,0))
+}
+```
+
+# ===== SLIDE 11: County-Level Analysis =====
+```{r}
+create_county_summary <- function(data) {
+  # Summary statistics table
+  summary_stats <- data %>%
+    dplyr::select(percent_adults_with_obesity, 
+           percent_physically_inactive,
+           food_environment_index,
+           percent_limited_access_to_healthy_foods) %>%
+    na.omit() %>%
+    summarise(
+      across(everything(), 
+             list(mean = ~round(mean(.x), 2),
+                  median = ~round(median(.x), 2),
+                  sd = ~round(sd(.x), 2),
+                  min = ~round(min(.x), 2),
+                  max = ~round(max(.x), 2)), 
+             .names = "{.col}_{.fn}")
+    )
+  
+  # Reshape for better presentation
+  summary_long <- summary_stats %>%
+    pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+    separate(variable, into = c("variable", "statistic"), sep = "_(?=[^_]*$)") %>%
+    pivot_wider(names_from = statistic, values_from = value)
+  
+  return(summary_long)
+}
+
+# Create scatter plot matrix for key variables
+create_scatter_matrix <- function(data) {
+  key_data <- data %>%
+    dplyr::select(percent_adults_with_obesity, 
+           percent_physically_inactive,
+           food_environment_index,
+           percent_limited_access_to_healthy_foods) %>%
+    na.omit()
+  
+  pairs(key_data, 
+        main = "Scatter Plot Matrix: Key Variables",
+        pch = 19, 
+        cex = 0.5,
+        col = alpha("steelblue", 0.6))
+}
+```
+
+# ===== SLIDE 12: Regional Comparison =====
+```{r}
+# Add region classification function
+classify_region <- function(state) {
+  midwest <- c("IL", "IN", "IA", "KS", "MI", "MN", "MO", "NE", "ND", "OH", "SD", "WI")
+  south <- c("AL", "AR", "DE", "FL", "GA", "KY", "LA", "MD", "MS", "NC", "OK", "SC", "TN", "TX", "VA", "WV")
+  northeast <- c("CT", "ME", "MA", "NH", "NJ", "NY", "PA", "RI", "VT")
+  west <- c("AK", "AZ", "CA", "CO", "HI", "ID", "MT", "NV", "NM", "OR", "UT", "WA", "WY")
+  
+  case_when(
+    state %in% midwest ~ "Midwest",
+    state %in% south ~ "South",
+    state %in% northeast ~ "Northeast",
+    state %in% west ~ "West",
+    TRUE ~ "Other"
+  )
+}
+
+create_regional_analysis <- function(data) {
+  # Add region classification
+  data_regional <- data %>%
+    mutate(region = classify_region(state)) %>%
+    filter(region != "Other") %>%
+    na.omit()
+  
+  # Regional summary
+  regional_summary <- data_regional %>%
+    group_by(region) %>%
+    summarise(
+      n_counties = n(),
+      avg_obesity = round(mean(percent_adults_with_obesity), 2),
+      avg_inactivity = round(mean(percent_physically_inactive), 2),
+      avg_fei = round(mean(food_environment_index), 2),
+      avg_limited_food_access = round(mean(percent_limited_access_to_healthy_foods), 2),
+      .groups = 'drop'
+    )
+  
+  # Box plot comparison
+  p1 <- ggplot(data_regional, aes(x = region, y = percent_adults_with_obesity, fill = region)) +
+    geom_boxplot(alpha = 0.7) +
+    labs(title = "Obesity Rates by Region",
+         x = "Region", y = "Percent Adults with Obesity (%)") +
+    theme_minimal() +
+    theme(legend.position = "none",
+          plot.title = element_text(hjust = 0.5, face = "bold"))
+  
+  return(list(summary = regional_summary, plot = p1))
+}
+```
+
+# ===== SLIDE 13: Huber Regression Models =====
+```{r}
+create_huber_models <- function(data) {
+  # Clean data
+  model_data <- data %>%
+    dplyr::select(percent_adults_with_obesity, 
+           percent_physically_inactive,
+           food_environment_index,
+           percent_limited_access_to_healthy_foods) %>%
+    na.omit()
+  
+  # Check if we have enough data
+  if (nrow(model_data) < 10) {
+    stop("Not enough complete cases for modeling")
+  }
+  
+  # Model 1: FEI + Physical Inactivity
+  tryCatch({
+    model1 <- rlm(percent_adults_with_obesity ~ food_environment_index + percent_physically_inactive,
+                  data = model_data, method = "M")
+  }, error = function(e) {
+    # Fallback to regular linear model if Huber fails
+    model1 <- lm(percent_adults_with_obesity ~ food_environment_index + percent_physically_inactive,
+                 data = model_data)
+  })
+  
+  # Model 2: Physical Inactivity + Access to Healthy Foods
+  tryCatch({
+    model2 <- rlm(percent_adults_with_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods,
+                  data = model_data, method = "M")
+  }, error = function(e) {
+    # Fallback to regular linear model if Huber fails
+    model2 <- lm(percent_adults_with_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods,
+                 data = model_data)
+  })
+  
+  # Create residual plots
+  model_data$fitted1 <- fitted(model1)
+  model_data$residuals1 <- residuals(model1)
+  model_data$fitted2 <- fitted(model2)
+  model_data$residuals2 <- residuals(model2)
+  
+  p1 <- ggplot(model_data, aes(x = fitted1, y = residuals1)) +
+    geom_point(alpha = 0.6, color = "steelblue") +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    geom_smooth(method = "loess", se = FALSE, color = "darkred") +
+    labs(title = "Residuals vs Fitted: Model 1 (FEI + Inactivity)",
+         x = "Fitted Values", y = "Residuals") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  
+  p2 <- ggplot(model_data, aes(x = fitted2, y = residuals2)) +
+    geom_point(alpha = 0.6, color = "darkgreen") +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    geom_smooth(method = "loess", se = FALSE, color = "darkred") +
+    labs(title = "Residuals vs Fitted: Model 2 (Inactivity + Food Access)",
+         x = "Fitted Values", y = "Residuals") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  
+  return(list(
+    model1 = model1,
+    model2 = model2,
+    plot1 = p1,
+    plot2 = p2,
+    data = model_data
+  ))
+}
+```
+
+# ===== ADDITIONAL HELPER FUNCTIONS =====
+```{r}
+# Function to create a nice summary table for presentation
+create_model_comparison_table <- function(model1, model2) {
+  # Extract coefficients and statistics
+  model1_coef <- summary(model1)$coefficients
+  model2_coef <- summary(model2)$coefficients
+  
+  # Check if p-values are available (some robust regression summaries don't include them)
+  has_pvalues <- ncol(model1_coef) >= 4 && ncol(model2_coef) >= 4
+  
+  if (has_pvalues) {
+    # Create comparison table with p-values
+    comparison <- data.frame(
+      Model = c("Model 1: FEI + Inactivity", "", "", 
+                "Model 2: Inactivity + Food Access", "", ""),
+      Variable = c("Intercept", "Food Environment Index", "Physical Inactivity (%)",
+                   "Intercept", "Physical Inactivity (%)", "Limited Food Access (%)"),
+      Coefficient = c(round(model1_coef[,1], 3), round(model2_coef[,1], 3)),
+      SE = c(round(model1_coef[,2], 3), round(model2_coef[,2], 3)),
+      t_value = c(round(model1_coef[,3], 3), round(model2_coef[,3], 3)),
+      p_value = c(ifelse(model1_coef[,4] < 0.001, "<0.001", round(model1_coef[,4], 3)),
+                  ifelse(model2_coef[,4] < 0.001, "<0.001", round(model2_coef[,4], 3)))
+    )
+  } else {
+    # Create comparison table without p-values
+    comparison <- data.frame(
+      Model = c("Model 1: FEI + Inactivity", "", "", 
+                "Model 2: Inactivity + Food Access", "", ""),
+      Variable = c("Intercept", "Food Environment Index", "Physical Inactivity (%)",
+                   "Intercept", "Physical Inactivity (%)", "Limited Food Access (%)"),
+      Coefficient = c(round(model1_coef[,1], 3), round(model2_coef[,1], 3)),
+      SE = c(round(model1_coef[,2], 3), round(model2_coef[,2], 3)),
+      t_value = c(round(model1_coef[,3], 3), round(model2_coef[,3], 3))
+    )
+  }
+  
+  return(comparison)
+}
+
+# Function to calculate model fit statistics
+calculate_model_stats <- function(model1, model2, data) {
+  # Calculate R-squared equivalent for robust regression
+  model_data <- data %>%
+    dplyr::select(percent_adults_with_obesity, 
+           percent_physically_inactive,
+           food_environment_index,
+           percent_limited_access_to_healthy_foods) %>%
+    na.omit()
+  
+  # Pseudo R-squared using correlation between fitted and actual values
+  fitted1 <- fitted(model1)
+  fitted2 <- fitted(model2)
+  actual <- model_data$percent_adults_with_obesity
+  
+  r2_model1 <- cor(fitted1, actual)^2
+  r2_model2 <- cor(fitted2, actual)^2
+  
+  # RMSE
+  rmse1 <- sqrt(mean(residuals(model1)^2))
+  rmse2 <- sqrt(mean(residuals(model2)^2))
+  
+  # MAE
+  mae1 <- mean(abs(residuals(model1)))
+  mae2 <- mean(abs(residuals(model2)))
+  
+  stats <- data.frame(
+    Model = c("Model 1: FEI + Inactivity", "Model 2: Inactivity + Food Access"),
+    Pseudo_R2 = round(c(r2_model1, r2_model2), 3),
+    RMSE = round(c(rmse1, rmse2), 3),
+    MAE = round(c(mae1, mae2), 3)
+  )
+  
+  return(stats)
+}
+
+# Function to create regional comparison visualization
+create_regional_comparison_viz <- function(data) {
+  # Add region classification
+  data_regional <- data %>%
+    mutate(region = classify_region(state)) %>%
+    filter(region != "Other") %>%
+    dplyrselect(region, percent_adults_with_obesity, percent_physically_inactive, 
+           food_environment_index, percent_limited_access_to_healthy_foods) %>%
+    na.omit()
+  
+  # Create multiple comparison plots
+  p1 <- ggplot(data_regional, aes(x = region, y = percent_adults_with_obesity, fill = region)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.2, fill = "white", alpha = 0.8) +
+    labs(title = "Obesity Rates by Region", x = "Region", y = "Obesity Rate (%)") +
+    theme_minimal() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = "bold"))
+  
+  p2 <- ggplot(data_regional, aes(x = region, y = percent_physically_inactive, fill = region)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.2, fill = "white", alpha = 0.8) +
+    labs(title = "Physical Inactivity by Region", x = "Region", y = "Physical Inactivity (%)") +
+    theme_minimal() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = "bold"))
+  
+  p3 <- ggplot(data_regional, aes(x = region, y = food_environment_index, fill = region)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.2, fill = "white", alpha = 0.8) +
+    labs(title = "Food Environment Index by Region", x = "Region", y = "FEI Score") +
+    theme_minimal() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = "bold"))
+  
+  return(list(obesity = p1, inactivity = p2, fei = p3))
+}
+
+# Function to identify extreme counties for discussion
+identify_extreme_counties <- function(data) {
+  extreme_counties <- data %>%
+    select(state, county, percent_adults_with_obesity, percent_physically_inactive, 
+           food_environment_index, percent_limited_access_to_healthy_foods) %>%
+    na.omit() %>%
+    mutate(
+      obesity_percentile = ntile(percent_adults_with_obesity, 100),
+      inactivity_percentile = ntile(percent_physically_inactive, 100),
+      fei_percentile = ntile(food_environment_index, 100)
+    ) %>%
+    filter(
+      obesity_percentile >= 95 | obesity_percentile <= 5 |
+      inactivity_percentile >= 95 | inactivity_percentile <= 5 |
+      fei_percentile >= 95 | fei_percentile <= 5
+    ) %>%
+    arrange(desc(obesity_percentile))
+  
+  return(extreme_counties)
+}
+```
+
+# ===== EXAMPLE USAGE =====
+```{r}
+# Uncomment and run these functions with your data
+
+# Slide 6: Obesity Map
+obesity_map <- create_obesity_map(data_2025)
+print(obesity_map)
+
+# Slide 7: Scatterplot Analysis
+inactivity_plot <- create_inactivity_plot(data_2025)
+food_access_plot <- create_food_access_plot(data_2025)
+print(inactivity_plot)
+print(food_access_plot)
+
+# Slide 8: Food Environment Index
+fei_plot <- create_fei_plot(data_2025)
+print(fei_plot)
+
+# Slide 9: Variable Importance
+fei_importance <- create_fei_importance(data_2025)
+print(fei_importance)
+
+# Slide 10: Correlation Matrix
+create_correlation_matrix(data_2025)
+
+# Slide 11: County-Level Analysis
+county_stats <- create_county_summary(data_2025)
+create_scatter_matrix(data_2025)
+extreme_counties <- identify_extreme_counties(data_2025)
+
+# Slide 12: Regional Analysis
+regional_analysis <- create_regional_analysis(data_2025)
+regional_viz <- create_regional_comparison_viz(data_2025)
+print(regional_analysis$summary)
+print(regional_viz$obesity)
+print(regional_viz$inactivity)
+print(regional_viz$fei)
+
+# ===== SAFE EXECUTION WRAPPER =====
+# Use this function to safely run your analysis
+run_slide_analysis <- function(data_2025, slide_number) {
+  
+  switch(as.character(slide_number),
+    "6" = {
+      cat("Creating Obesity Map...\n")
+      tryCatch({
+        obesity_map <- create_obesity_map(data_2025)
+        print(obesity_map)
+      }, error = function(e) cat("Error in slide 6:", e$message, "\n"))
+    },
+    
+    "7" = {
+      cat("Creating Scatterplot Analysis...\n")
+      tryCatch({
+        inactivity_plot <- create_inactivity_plot(data_2025)
+        food_access_plot <- create_food_access_plot(data_2025)
+        print(inactivity_plot)
+        print(food_access_plot)
+      }, error = function(e) cat("Error in slide 7:", e$message, "\n"))
+    },
+    
+    "8" = {
+      cat("Creating Food Environment Index Plot...\n")
+      tryCatch({
+        fei_plot <- create_fei_plot(data_2025)
+        print(fei_plot)
+      }, error = function(e) cat("Error in slide 8:", e$message, "\n"))
+    },
+    
+    "9" = {
+      cat("Creating Variable Importance Analysis...\n")
+      tryCatch({
+        fei_importance <- create_fei_importance(data_2025)
+        print(fei_importance)
+      }, error = function(e) cat("Error in slide 9:", e$message, "\n"))
+    },
+    
+    "10" = {
+      cat("Creating Correlation Matrix...\n")
+      tryCatch({
+        create_correlation_matrix(data_2025)
+      }, error = function(e) cat("Error in slide 10:", e$message, "\n"))
+    },
+    
+    "11" = {
+      cat("Creating County-Level Analysis...\n")
+      tryCatch({
+        county_stats <- create_county_summary(data_2025)
+        print(county_stats)
+        create_scatter_matrix(data_2025)
+        extreme_counties <- identify_extreme_counties(data_2025)
+        print(head(extreme_counties, 10))
+      }, error = function(e) cat("Error in slide 11:", e$message, "\n"))
+    },
+    
+    "12" = {
+      cat("Creating Regional Analysis...\n")
+      tryCatch({
+        regional_analysis <- create_regional_analysis(data_2025)
+        regional_viz <- create_regional_comparison_viz(data_2025)
+        print(regional_analysis$summary)
+        print(regional_viz$obesity)
+        print(regional_viz$inactivity)
+        print(regional_viz$fei)
+      }, error = function(e) cat("Error in slide 12:", e$message, "\n"))
+    },
+    
+    "13" = {
+      cat("Creating Huber Regression Models...\n")
+      tryCatch({
+        huber_results <- create_huber_models(data_2025)
+        
+        # Print model summaries
+        cat("\n=== MODEL 1 SUMMARY ===\n")
+        print(summary(huber_results$model1))
+        
+        cat("\n=== MODEL 2 SUMMARY ===\n")
+        print(summary(huber_results$model2))
+        
+        # Create comparison table
+        model_comparison <- create_model_comparison_table(huber_results$model1, huber_results$model2)
+        cat("\n=== MODEL COMPARISON TABLE ===\n")
+        print(model_comparison)
+        
+        # Calculate model statistics
+        model_stats <- calculate_model_stats(huber_results$model1, huber_results$model2, data_2025)
+        cat("\n=== MODEL FIT STATISTICS ===\n")
+        print(model_stats)
+        
+        # Print residual plots
+        print(huber_results$plot1)
+        print(huber_results$plot2)
+        
+      }, error = function(e) cat("Error in slide 13:", e$message, "\n"))
+    },
+    
+    cat("Invalid slide number. Use 6-13\n")
+  )
+}
+```
+# ===== EXAMPLE USAGE - SAFE EXECUTION =====
+```{r}
+# Run individual slides safely:
+ run_slide_analysis(data_2025, "6")   # Obesity map
+ run_slide_analysis(data_2025, "7")   # Scatterplots
+ run_slide_analysis(data_2025, "8")   # FEI analysis
+ run_slide_analysis(data_2025, "9")   # Variable importance
+ run_slide_analysis(data_2025, "10")  # Correlation matrix
+ run_slide_analysis(data_2025, "11")  # County analysis
+ run_slide_analysis(data_2025, "12")  # Regional comparison
+ run_slide_analysis(data_2025, "13")  # Huber regression
+
+# Or run all slides:
+ for(i in 6:13) {
+   cat("\n", rep("=", 50), "\n")
+   cat("SLIDE", i, "\n")
+   cat(rep("=", 50), "\n")
+   run_slide_analysis(data_2025, as.character(i))
+ }
+```

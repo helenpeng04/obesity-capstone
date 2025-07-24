@@ -24,7 +24,16 @@ editor:
 
 ## Introduction
 
-Describe the problem and why it is important.
+Obesity is a growing public health crisis in the United States contributing to chronic conditions such as type 2 diabetes, heart disease, and certain types of cancer.
+In addition to its health impacts, obesity places a significant financial strain on the healthcare system, with billions spent annually on treatment and related complications.
+As the prevalence of obesity continues to rise, there is a growing need to understand the underlying environmental and social drivers that contribute to this epidemic.
+
+While individual behavior plays a role, mounting evidence points to the importance of social determinants of health—such as access to safe spaces for physical activity and availability of nutritious food.
+These factors are often shaped by the built environment, including infrastructure, economic conditions, and community planning.
+For example, neighborhoods with few parks or grocery stores may discourage healthy behavior, while environments that support walking, biking, and affordable food access can promote better health outcomes.
+
+This study explores the research question: ***Do physical inactivity levels and access to healthy food affect obesity rates at the county level?*** By focusing on these two predictors, the goal is to investigate how variations in community resources and infrastructure may influence the health of populations across different regions.
+Understanding these relationships is critical for informing public health interventions, designing equitable urban policies, and creating targeted wellness programs in schools, workplaces, and communities.
 
 ## Data
 
@@ -171,15 +180,18 @@ food_obesity_plot <- data_2025 |>
 physical_obesity_plot + food_obesity_plot
 ```
 
-These scatterplots reveal a positive association between physical inactivity and obesity rates, indicating that counties with higher levels of inactivity tend to have higher obesity prevalence.
+These scatter plots reveal a positive association between physical inactivity and obesity rates, indicating that counties with higher levels of inactivity tend to have higher obesity prevalence.
 In contrast, limited access to healthy food shows no clear association with obesity rates.
 Meanwhile, Food Environment Index (FEI) shows a negative association, suggesting that counties with more favorable food environments tend to have lower obesity rates.
 
-We then created a correlation matrix to
+To further examine the relationships among our predictor variables, we created a correlation matrix.
 
 ```{r cor_matrix}
 
 ```
+
+We found a strong correlation (0.78) between the Food Environment Index and limited access to healthy food.
+This suggests that FEI captures much of the variation represented by the limited access variable, but in a more comprehensive and predictive manner, as it also incorporates additional socioeconomic factors.
 
 ## Methods
 
@@ -212,11 +224,23 @@ Describe your results.
 This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output.
 (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
 
-```{r}
+```{r huber_models}
 
 ```
 
+In Model 1, which includes physical inactivity and the Food Environment Index (FEI) as predictors, both variables are statistically significant (p = 0.0002 and p = 0.015, respectively).
+Specifically, a 1% increase in physical inactivity is associated with approximately a 3.1% increase in the odds of adult obesity, holding FEI constant.
+Conversely, a 1-point increase in the Food Environment Index is associated with a 1.5% increase in the odds of obesity, controlling for physical inactivity.
+
+This positive association with FEI is somewhat counterintuitive and inconsistent with our earlier exploratory analysis.
+However, it could potentially be explained by the fact that when controlling for physical inactivity, if all counties have similarly high inactivity levels, then increased access to healthy food, whether economic or geographic, may have little impact on improving obesity rates.
+
+In Model 2, which includes physical inactivity and limited access to healthy food as predictors, both variables are statistically significant (p = 0.0002 and p = 0.015, respectively).
+Specifically, a 1% increase in
+
 ### Model Evaluation
+
+Next, we assessed the performance of the models.
 
 ```{r}
 

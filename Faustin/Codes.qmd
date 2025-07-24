@@ -1,0 +1,174 @@
+---
+title: "Codes"
+format: html
+---
+
+```{r Huber}
+library(broom)
+library(patchwork)
+library(MASS)
+
+huber_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+library(tidyverse)
+library(broom)
+library(MASS)
+
+# Fit both models
+model1 <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, data = huber_2025)
+model2 <- rlm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods, data = huber_2025)
+
+# Extract and tidy coefficients
+coef_df1 <- tidy(model1, conf.int = TRUE) |> 
+  filter(term != "(Intercept)") |>
+  mutate(
+    model = "Model 1 (Food Env. Index + Inactivity)",
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+      "food_environment_index" = "Food Environment Index",
+      "percent_physically_inactive" = "Physically Inactive (%)")
+  )
+
+coef_df2 <- tidy(model2, conf.int = TRUE) |> 
+  filter(term != "(Intercept)") |>
+  mutate(
+    model = "Model 2 (Inactivity + Food Access)",
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+      "percent_physically_inactive" = "Physically Inactive (%)",
+      "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)")
+  )
+
+# Combine into one dataframe
+combined_coefs <- bind_rows(coef_df1, coef_df2)
+
+# Plot both models together with faceting
+ggplot(combined_coefs, aes(x = OR, y = term, color = model)) +
+  geom_point(position = position_dodge(width = 0.5), size = 3) +
+  geom_errorbarh(
+    aes(xmin = OR_low, xmax = OR_high),
+    height = 0.2,
+    position = position_dodge(width = 0.5),
+    size = 1
+  ) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +
+  labs(
+    x = "Odds Ratio (Effect Size)",
+    y = NULL,
+    color = "Model",
+    title = "Comparing Two Models: Obesity Predictors"
+  ) +
+  scale_color_manual(values = c("steelblue", "darkorange")) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
+
+
+```{r huber table}
+library(MASS)
+library(broom)
+library(tidyverse)
+library(knitr)
+library(patchwork)
+
+# Prepare data
+huber_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+
+# Fit models
+model1 <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, 
+              data = huber_2025)
+model2 <- rlm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods, 
+              data = huber_2025)
+
+# Calculate comparison metrics
+comparison_stats <- tibble(
+  Model = c("Food Env. Index + Inactivity", "Inactivity + Food Access"),
+  R_squared = c(
+    1 - (sum(residuals(model1)^2) / sum((huber_2025$logit_obesity - mean(huber_2025$logit_obesity))^2)),
+    1 - (sum(residuals(model2)^2) / sum((huber_2025$logit_obesity - mean(huber_2025$logit_obesity))^2))
+  ),
+  AIC = c(AIC(model1), AIC(model2)),
+  BIC = c(BIC(model1), BIC(model2)),
+  MAE = c(mean(abs(residuals(model1))), mean(abs(residuals(model2))))
+) |>
+  mutate(across(where(is.numeric), ~round(., 3)))
+
+# Print formatted comparison table
+kable(comparison_stats, 
+      caption = "Huber Regression Model Comparison",
+      col.names = c("Model", "R²", "AIC", "BIC", "MAE"),
+      align = c("l", "c", "c", "c", "c"),
+      format.args = list(big.mark = ",")) |>
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = FALSE,
+                position = "center")
+
+# Create and display coefficient plots
+p1 <- coef_plot(model1, "Model 1: Food Environment Index + Inactivity")
+p2 <- coef_plot(model2, "Model 2: Inactivity + Food Access")
+
+# Create and display residual plot
+resid_plot <- ggplot(resid_data, aes(x = fitted, y = residuals)) +
+  geom_point(alpha = 0.5, aes(color = model)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "darkred") +
+  facet_wrap(~model, scales = "free") +
+  labs(title = "Model Residual Diagnostics", 
+       x = "Fitted Values", y = "Residuals") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Arrange all plots
+(p1 + p2) / resid_plot +
+  plot_annotation(title = "Huber Regression Model Analysis",
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 16)))
+```
+
+```{r scatterplot}
+library(patchwork)
+
+physical_obesity_plot <- data_2025 |>
+  ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) 
+healthy_plot <- data_2025 |>
+  ggplot(aes(x = percent_limited_access_to_healthy_foods, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "% Limited Access to Healthy Foods",
+    y = "% Adults with Obesity"
+  ) 
+
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index (0 = worst, 10 = best)",
+    y = "% Adults with Obesity"
+  ) 
+combined_plot <- physical_obesity_plot + healthy_plot + food_obesity_plot 
+
+
+combined_plot
+```
+
+

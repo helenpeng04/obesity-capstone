@@ -3,7 +3,7 @@ title: "Mapping Obesity: A County-Level Analysis of Lifestyle and Food Environme
 author:
   - Helen Peng
   - Anvith Thumma
-  - Jordon Faustin
+  - Jordan Faustin
 date: "July 25, 2025"
 toc: true
 format:

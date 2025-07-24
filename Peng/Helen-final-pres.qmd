@@ -325,7 +325,7 @@ vip(top_vi, aesthetics = list(fill = "steelblue")) +
 
 ```
 
-## Linear Regression Model 
+## Linear Regression Model
 
 ```{r linear_models}
 library(MASS)

@@ -159,25 +159,38 @@ This pattern suggests potential regional influences such as socioeconomic condit
 Next, we examined how obesity rates relate to key predictor variables through a series of scatter plots.
 
 ```{r scatterplot}
-#| fig-width: 5 
+#| fig-width: 10 
 #| fig-height: 3.5 
 #| fig-cap: "Figure 1: Scatter plots illustrating the relationship between predictor variables and obesity rates."  
 
-library(patchwork) 
+library(patchwork)
+
 physical_obesity_plot <- data_2025 |>
   ggplot(aes(x = percent_physically_inactive, y = percent_adults_with_obesity)) +
   geom_point(alpha = 0.7) +
   geom_smooth(method = "gam", se = FALSE) +
-  labs(x = "% Physically Inactive", y = "% Adults with Obesity")  
-
-food_obesity_plot <- data_2025 |>
-  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +  
+  labs(
+    x = "% Physically Inactive",
+    y = "% Adults with Obesity"
+  ) 
+healthy_plot <- data_2025 |>
+  ggplot(aes(x = percent_limited_access_to_healthy_foods, y = percent_adults_with_obesity)) +
   geom_point(alpha = 0.7) +
   geom_smooth(method = "gam", se = FALSE) +
-  labs( x = "Food Environment Index", y = "% Adults with Obesity")   
+  labs(
+    x = "% Limited Access to Healthy Foods",
+    y = "% Adults with Obesity"
+  ) 
 
-
-physical_obesity_plot + food_obesity_plot
+food_obesity_plot <- data_2025 |>
+  ggplot(aes(x = food_environment_index, y = percent_adults_with_obesity)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "gam", se = FALSE) +
+  labs(
+    x = "Food Environment Index",
+    y = "% Adults with Obesity"
+  ) 
+physical_obesity_plot + healthy_plot + food_obesity_plot 
 ```
 
 These scatter plots reveal a positive association between physical inactivity and obesity rates, indicating that counties with higher levels of inactivity tend to have higher obesity prevalence.
@@ -187,7 +200,37 @@ Meanwhile, Food Environment Index (FEI) shows a negative association, suggesting
 To further examine the relationships among our predictor variables, we created a correlation matrix.
 
 ```{r cor_matrix}
+#| fig-width: 5 
+#| fig-height: 3.5 
+#| fig-cap: "Figure 3: Correlation matrix showing relationships among obesity rate, physical inactivity, food access measures, income, and rural population."  
 
+library(corrplot)
+
+corr_data <- data_2025 |> 
+  dplyr::select(percent_adults_with_obesity,
+         percent_physically_inactive,
+         percent_limited_access_to_healthy_foods,
+         food_environment_index,
+         median_household_income,
+         percent_rural |> 
+  rename(
+    "Obesity Rate" = percent_adults_with_obesity,
+    "Physical Inactivity" = percent_physically_inactive,
+    "Limited Food Access" = percent_limited_access_to_healthy_foods,
+    "Food Environment Index" = food_environment_index,
+    "Median Income" = median_household_income,
+    "Rural Population" = percent_rural
+  )
+
+cor_matrix <- cor(corr_data, use = "complete.obs")
+corrplot(cor_matrix, 
+         method = "color",
+         type = "upper",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black",
+         number.cex = 0.8,
+         diag = FALSE)
 ```
 
 We found a strong correlation (0.78) between the Food Environment Index and limited access to healthy food.
@@ -220,31 +263,121 @@ This second model allowed us to directly compare the two predictors and reinforc
 
 ## Results
 
-Describe your results.
-This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output.
-(Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
+The estimated odds ratios and their confidence intervals for both models are displayed in the plot below, followed by an interpretation of the main findings.
 
 ```{r huber_models}
 
+huber_2025 <- data_2025 |> 
+  mutate(
+    obesity_prop = percent_adults_with_obesity / 100,
+    logit_obesity = log(obesity_prop / (1 - obesity_prop))
+  )
+library(tidyverse)
+library(broom)
+library(MASS)
+
+
+model1 <- rlm(logit_obesity ~ food_environment_index + percent_physically_inactive, data = huber_2025)
+model2 <- rlm(logit_obesity ~ percent_physically_inactive + percent_limited_access_to_healthy_foods, data = huber_2025)
+
+
+coef_df1 <- tidy(model1, conf.int = TRUE) |> 
+  filter(term != "(Intercept)") |>
+  mutate(
+    model = "Model 1 (FEI + Inactivity)",
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+      "food_environment_index" = "Food Environment Index",
+      "percent_physically_inactive" = "Physically Inactive (%)")
+  )
+
+coef_df2 <- tidy(model2, conf.int = TRUE) |> 
+  filter(term != "(Intercept)") |>
+  mutate(
+    model = "Model 2 (Food Access + Inactivity)",
+    OR = exp(estimate),
+    OR_low = exp(conf.low),
+    OR_high = exp(conf.high),
+    term = recode(term,
+      "percent_physically_inactive" = "Physically Inactive (%)",
+      "percent_limited_access_to_healthy_foods" = "Limited Access to Healthy Foods (%)")
+  )
+
+combined_coefs <- bind_rows(coef_df1, coef_df2)
+
+ggplot(combined_coefs, aes(x = OR, y = term, color = model)) +
+  geom_point(position = position_dodge(width = 0.5), size = 3) +
+  geom_errorbarh(
+    aes(xmin = OR_low, xmax = OR_high),
+    height = 0.2,
+    position = position_dodge(width = 0.5),
+    size = 1
+  ) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +
+  labs(
+    x = "Odds Ratio (Effect Size)",
+    y = NULL,
+    color = "Model"
+  ) +
+  scale_color_manual(values = c("steelblue", "darkorange")) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
 ```
 
-In Model 1, which includes physical inactivity and the Food Environment Index (FEI) as predictors, both variables are statistically significant (p = 0.0002 and p = 0.015, respectively).
-Specifically, a 1% increase in physical inactivity is associated with approximately a 3.1% increase in the odds of adult obesity, holding FEI constant.
-Conversely, a 1-point increase in the Food Environment Index is associated with a 1.5% increase in the odds of obesity, controlling for physical inactivity.
+In **Model 1**, which includes physical inactivity and the Food Environment Index (FEI) as predictors, both variables are statistically significant (*t* = 56.1 and *t* = 5.5, respectively).
+A 1% increase in physical inactivity is associated with approximately a **3.1% increase in the odds** of adult obesity, holding FEI constant.
+In contrast, a 1-point increase in FEI is associated with a **1.3% increase in the odds** of obesity, controlling for physical inactivity.
 
-This positive association with FEI is somewhat counterintuitive and inconsistent with our earlier exploratory analysis.
-However, it could potentially be explained by the fact that when controlling for physical inactivity, if all counties have similarly high inactivity levels, then increased access to healthy food, whether economic or geographic, may have little impact on improving obesity rates.
+The positive association between FEI and obesity is somewhat counterintuitive, as our exploratory analysis suggested a negative relationship.
+One possible explanation is that when physical inactivity is held constant, the benefits of food access, such as walking to nearby stores or choosing healthier options, may no longer influence obesity rates, since those behaviors are effectively accounted for in the model.
+Additionally, the positive coefficient for FEI may reflect confounding factors not captured in our model, such as urbanization or broader socioeconomic conditions that simultaneously influence food environment scores and obesity prevalence.
 
-In Model 2, which includes physical inactivity and limited access to healthy food as predictors, both variables are statistically significant (p = 0.0002 and p = 0.015, respectively).
-Specifically, a 1% increase in
+In **Model 2**, which includes physical inactivity and limited access to healthy food as predictors, physical inactivity remains statistically significant (*t* = 63.9), while limited access is not (*t* = –0.97).
+A 1% increase in physical inactivity is associated with approximately a **2.9% increase in the odds** of adult obesity, holding limited access constant.
+
+Across both models, **physical inactivity consistently emerges as a strong and robust predictor** of adult obesity, with a larger effect size than either FEI or limited food access.
+This highlights the critical role of physical activity in shaping obesity outcomes and supports its prioritization in public health interventions.
 
 ### Model Evaluation
 
-Next, we assessed the performance of the models.
+To compare the two models, we evaluated several performance metrics including R-squared, AIC, BIC, and mean absolute error (MAE).
+These metrics help determine which model better captures the relationship between the predictors and adult obesity rates.
 
 ```{r}
+library(knitr)
+library(kableExtra)
+
+comparison_stats <- tibble(
+  Model = c("FEI + Inactivity", "Food Access + Inactivity"),
+  R_squared = c(
+    1 - (sum(residuals(model1)^2) / sum((huber_2025$logit_obesity - mean(huber_2025$logit_obesity))^2)),
+    1 - (sum(residuals(model2)^2) / sum((huber_2025$logit_obesity - mean(huber_2025$logit_obesity))^2))
+  ),
+  AIC = c(AIC(model1), AIC(model2)),
+  BIC = c(BIC(model1), BIC(model2)),
+  MAE = c(mean(abs(residuals(model1))), mean(abs(residuals(model2))))
+) |>
+  mutate(across(where(is.numeric), ~round(., 3)))
+
+kable(comparison_stats, 
+      col.names = c("Model", "R²", "AIC", "BIC", "MAE"),
+      align = c("l", "c", "c", "c", "c"),
+      format.args = list(big.mark = ",")) |>
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = FALSE,
+                position = "center")
 
 ```
+
+While the model including limited access to healthy food and physical inactivity shows a slightly higher R² value, indicating it explains marginally more variance in obesity rates, the model with the Food Environment Index (FEI) performs better on other important criteria.
+Specifically, the FEI model has lower AIC and BIC values, suggesting it achieves a better balance between model fit and complexity.
+Additionally, the FEI model has a marginally lower MAE, indicating slightly more accurate predictions on average.
+
+Taken together, these results suggest that the model including FEI provides a more parsimonious and robust fit to the data, making it the preferable choice despite the slightly lower R².
+This supports the use of FEI as a more comprehensive measure of the food environment’s impact on obesity rates.
 
 ## Recommendations
 
@@ -290,3 +423,28 @@ First, incorporating data on the number of parks, wellness centers, and recreati
 Additionally, analyzing temporal trends in fitness facility usage may offer insights into behavioral patterns and access disparities.
 Future studies should also explore other relevant variables that could influence obesity, such as public transportation availability, climate, and healthcare access.
 Finally, applying causal inference methods, such as instrumental variable analysis or matching methods, could help determine whether physical inactivity actually causes obesity, as current results are based on observed correlations and cannot confirm causation.
+
+## Appendix
+
+```{r}
+lm_model <- lm(percent_adults_with_obesity ~ food_environment_index + percent_physically_inactive, data = data_2025) 
+
+par(mfrow = c(2, 2))
+plot(lm_model)
+par(mfrow = c(1, 1))
+
+plot(lm_model, which = 4)
+```
+
+```{r}
+
+coef_df1 |> 
+  dplyr::select(-model) |> 
+  mutate(across(where(is.numeric), ~ round(., 3))) |> 
+  kable(caption = "FEI + Inactivity")
+
+coef_df2 |> 
+  dplyr::select(-model) |> 
+  mutate(across(where(is.numeric), ~ round(., 3))) |> 
+  kable(caption = "Food Access + Inactivity")
+```

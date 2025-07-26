@@ -200,8 +200,8 @@ Meanwhile, Food Environment Index (FEI) shows a negative association, suggesting
 To further examine the relationships among our predictor variables, we created a correlation matrix.
 
 ```{r}
-#| fig-width: 5 
-#| fig-height: 3.5 
+#| fig-width: 10 
+#| fig-height: 5 
 #| fig-cap: "Figure 3: Correlation matrix showing relationships among obesity rate, physical inactivity, food access measures, income, and rural population."  
 
 library(corrplot)
@@ -333,7 +333,7 @@ ggplot(combined_coefs, aes(x = OR, y = term, color = model)) +
 
 ```
 
-In **Model 1**, which includes physical inactivity and the Food Environment Index (FEI) as predictors, b**oth variables are statistically significant** (*t* = 56.1 and *t* = 5.5, respectively).
+In **Model 1**, which includes physical inactivity and the Food Environment Index (FEI) as predictors, **both variables are statistically significant** (*t* = 56.1 and *t* = 5.5, respectively).
 A 1% increase in physical inactivity is associated with approximately a **3.1% increase in the odds** of adult obesity, holding FEI constant.
 In contrast, a 1-point increase in FEI is associated with a **1.3% increase in the odds** of obesity, controlling for physical inactivity.
 
@@ -385,33 +385,6 @@ Additionally, the FEI model has a marginally lower MAE, indicating slightly more
 Taken together, these results suggest that the model including FEI provides a more parsimonious and robust fit to the data, making it the preferable choice despite the slightly lower R².
 This supports the use of FEI as a more comprehensive measure of the food environment’s impact on obesity rates.
 
-## Recommendations
-
-**Prioritize Physical Activity Infrastructure**
-
-Investing in infrastructure that promotes physical activity is essential for reducing obesity rates, particularly in counties with high levels of physical inactivity.
-Creating walkable communities by expanding sidewalks, bike lanes, and trails makes active transportation more accessible and safe.
-A notable example is the *Minneapolis Complete Streets Policy*, which prioritizes pedestrians, bicyclists, and transit users in street design.
-This initiative has led to increased biking and walking while supporting safer and more equitable access to physical activity.
-Similar models could be adopted in high-obesity counties across the Midwest and South, where urban sprawl often limits pedestrian infrastructure.
-Additionally, increasing investment in *Safe Routes to School* programs can further support active lifestyles by improving crosswalks, signage, and sidewalk conditions near schools, helping children build habits of daily activity.
-
-**Improve Food Access with Targeted Interventions**
-
-Food access remains a major barrier in many rural and low-income urban counties, particularly across the South and Midwest.
-Mobile food solutions, such as *Veggie Van* in North Carolina and *Fresh Moves Mobile Market* in Chicago, have proven successful in delivering fresh produce to communities with limited access to grocery stores.
-These services often pair produce sales with cooking demonstrations or nutrition workshops, making healthy eating more accessible and culturally relevant.
-Pop-up farmers markets held at schools, churches, and community centers can further bridge food gaps, especially when coordinated with local public health departments or nonprofit organizations.
-These strategies are flexible, community-driven, and can be scaled or adapted based on local needs and food availability.
-
-**Redirect Funding to Hyper-Local Initiatives**
-
-While broad indicators like the Food Environment Index (FEI) are useful for identifying trends, targeted, hyper-local strategies often yield greater impact.
-Redirecting funding from large-scale programs to smaller, community-embedded efforts can better address the specific needs of a neighborhood or county.
-For example, in Louisville, Kentucky, the *Fresh Stop Markets* program partners with local farmers to provide subsidized CSA (Community Supported Agriculture) boxes to low-income residents, improving access to fresh produce while supporting regional agriculture.
-Such programs offer more tailored support than generic interventions, allowing communities to engage directly in both the design and implementation of solutions.
-This approach ensures that resources are used where they are most needed, with maximum relevance and efficiency.
-
 ## Discussion
 
 ### Key Takeaways
@@ -421,6 +394,33 @@ While improving access to healthy food is often seen as a key intervention, the 
 Notably, the Food Environment Index (FEI) captures more variability in obesity rates than any single variable.
 By combining measures of both food access and economic constraints, the FEI provides a more holistic representation of environmental and socioeconomic barriers to health.
 These findings highlight the importance of addressing physical activity and food access together, rather than treating them as isolated factors.
+
+### Recommendations
+
+#### **Prioritize Physical Activity Infrastructure**
+
+Investing in infrastructure that promotes physical activity is essential for reducing obesity rates, particularly in counties with high levels of physical inactivity.
+Creating walkable communities by expanding sidewalks, bike lanes, and trails makes active transportation more accessible and safe.
+A notable example is the *Minneapolis Complete Streets Policy*, which prioritizes pedestrians, bicyclists, and transit users in street design.
+This initiative has led to increased biking and walking while supporting safer and more equitable access to physical activity.
+Similar models could be adopted in high-obesity counties across the Midwest and South, where urban sprawl often limits pedestrian infrastructure.
+Additionally, increasing investment in *Safe Routes to School* programs can further support active lifestyles by improving crosswalks, signage, and sidewalk conditions near schools, helping children build habits of daily activity.
+
+#### **Improve Food Access with Targeted Interventions**
+
+Food access remains a major barrier in many rural and low-income urban counties, particularly across the South and Midwest.
+Mobile food solutions, such as *Veggie Van* in North Carolina and *Fresh Moves Mobile Market* in Chicago, have proven successful in delivering fresh produce to communities with limited access to grocery stores.
+These services often pair produce sales with cooking demonstrations or nutrition workshops, making healthy eating more accessible and culturally relevant.
+Pop-up farmers markets held at schools, churches, and community centers can further bridge food gaps, especially when coordinated with local public health departments or nonprofit organizations.
+These strategies are flexible, community-driven, and can be scaled or adapted based on local needs and food availability.
+
+#### **Redirect Funding to Hyper-Local Initiatives**
+
+While broad indicators like the Food Environment Index (FEI) are useful for identifying trends, targeted, hyper-local strategies often yield greater impact.
+Redirecting funding from large-scale programs to smaller, community-embedded efforts can better address the specific needs of a neighborhood or county.
+For example, in Louisville, Kentucky, the *Fresh Stop Markets* program partners with local farmers to provide subsidized CSA (Community Supported Agriculture) boxes to low-income residents, improving access to fresh produce while supporting regional agriculture.
+Such programs offer more tailored support than generic interventions, allowing communities to engage directly in both the design and implementation of solutions.
+This approach ensures that resources are used where they are most needed, with maximum relevance and efficiency.
 
 ### Future Work
 
@@ -454,3 +454,35 @@ coef_df2 |>
   mutate(across(where(is.numeric), ~ round(., 3))) |> 
   kable(caption = "Food Access + Inactivity")
 ```
+
+## Work Cited
+
+*Chicago Urban Farm*.
+Urban Growers Collective.
+(n.d.).
+https://www.urbangrowerscollective.org/
+
+*Health Data: Data & Documentation*.
+County Health Rankings & Roadmaps.
+(n.d.).
+https://www.countyhealthrankings.org/health-data/methodology-and-sources/data-documentation
+
+Leone, L. A., Haynes-Maslow, L., & Ammerman, A. S.
+(2017).
+Veggie Van Pilot Study: Impact of a Mobile Produce Market for Underserved Communities on Fruit and Vegetable Access and Intake.
+*Journal of hunger & environmental nutrition*, *12*(1), 89–100.
+https://doi.org/10.1080/19320248.2016.1175399
+
+*Minneapolis Street Design Guide*.
+City of Minneapolis Street Design Guide informs the planning and design of all future street projects in Minneapolis.
+(n.d.).
+https://sdg.minneapolismn.gov/introduction/policy-guidance
+
+New roots.
+(n.d.).
+https://newroots.org/
+
+*UOFL Community Supported Agriculture (CSA) program open for 2025 subscriptions*.
+UofL Community Supported Agriculture (CSA) Program open for 2025 subscriptions - UofL Sustainability.
+(2025, March 11).
+https://louisville.edu/sustainability/news/uofl-community-supported-agriculture-csa-program-open-for-2025-subscriptions
